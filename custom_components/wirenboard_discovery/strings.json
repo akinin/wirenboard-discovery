@@ -37,6 +37,8 @@
         "add_group": "Добавить или обновить группу",
         "edit_group": "Редактировать группу",
         "remove_group": "Удалить группу",
+        "export_config": "Экспорт конфигурации",
+        "import_config": "Импорт конфигурации",
         "diagnostics": "Диагностика"
       }
     },
@@ -50,6 +52,8 @@
           "add_group": "Добавить или обновить группу",
           "edit_group": "Редактировать группу",
           "remove_group": "Удалить группу",
+          "export_config": "Экспорт конфигурации",
+          "import_config": "Импорт конфигурации",
           "diagnostics": "Диагностика"
         }
       },
@@ -140,6 +144,20 @@
           "group_id": "Группа"
         }
       },
+      "export_config": {
+        "title": "Экспорт конфигурации",
+        "description": "Скопируйте JSON ниже. Он содержит параметры подключения, выбранные контролы, группы, роли и сохраненные описания контролов.",
+        "data": {
+          "export_data": "JSON"
+        }
+      },
+      "import_config": {
+        "title": "Импорт конфигурации",
+        "description": "Вставьте JSON, созданный экраном экспорта. После сохранения интеграция будет перезагружена.",
+        "data": {
+          "import_data": "JSON"
+        }
+      },
       "diagnostics": {
         "title": "Диагностика Wiren Board",
         "description": "Устройства: {device_count}\nКонтролы: {control_count}\nВыбрано контролов: {selected_count}\nГруппы: {group_count}\nСистемные контролы: {system_control_count}\nУправляемые контролы: {writable_control_count}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
@@ -149,6 +167,7 @@
       "cannot_connect": "Не удалось подключиться к MQTT-брокеру Wiren Board.",
       "required": "Заполните поле.",
       "already_exists": "Группа с таким ID уже существует.",
+      "invalid_import": "Не удалось прочитать JSON импорта.",
       "no_groups": "Группы еще не созданы."
     }
   }

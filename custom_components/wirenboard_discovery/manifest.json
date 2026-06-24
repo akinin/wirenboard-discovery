@@ -6,5 +6,5 @@
   "documentation": "https://github.com/4mr/wb-engine",
   "iot_class": "local_push",
   "requirements": ["paho-mqtt==2.1.0"],
-  "version": "0.8.0"
+  "version": "0.9.0"
 }

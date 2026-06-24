@@ -37,6 +37,8 @@
         "add_group": "Add or update group",
         "edit_group": "Edit group",
         "remove_group": "Remove group",
+        "export_config": "Export configuration",
+        "import_config": "Import configuration",
         "diagnostics": "Diagnostics"
       }
     },
@@ -50,6 +52,8 @@
           "add_group": "Add or update group",
           "edit_group": "Edit group",
           "remove_group": "Remove group",
+          "export_config": "Export configuration",
+          "import_config": "Import configuration",
           "diagnostics": "Diagnostics"
         }
       },
@@ -140,6 +144,20 @@
           "group_id": "Group"
         }
       },
+      "export_config": {
+        "title": "Export configuration",
+        "description": "Copy the JSON below. It contains connection settings, selected controls, groups, roles, and stored control metadata.",
+        "data": {
+          "export_data": "JSON"
+        }
+      },
+      "import_config": {
+        "title": "Import configuration",
+        "description": "Paste JSON created by the export screen. The integration will reload after saving.",
+        "data": {
+          "import_data": "JSON"
+        }
+      },
       "diagnostics": {
         "title": "Wiren Board diagnostics",
         "description": "Devices: {device_count}\nControls: {control_count}\nSelected controls: {selected_count}\nGroups: {group_count}\nSystem controls: {system_control_count}\nWritable controls: {writable_control_count}\nMQTT messages during check: {message_count}\nParse errors: {parse_errors}\nCheck duration, s: {elapsed_seconds}\nTypes: {type_counts}\nLast topic: {last_topic}\nLast value: {last_payload}"
@@ -149,6 +167,7 @@
       "cannot_connect": "Cannot connect to the Wiren Board MQTT broker.",
       "required": "Fill in this field.",
       "already_exists": "A group with this ID already exists.",
+      "invalid_import": "Could not read import JSON.",
       "no_groups": "No groups have been created yet."
     }
   }

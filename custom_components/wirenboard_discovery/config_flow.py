@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 from typing import Any
@@ -167,7 +168,16 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         return self.async_show_menu(
             step_id="init",
-            menu_options=["connection", "controls", "add_group", "edit_group", "remove_group", "diagnostics"],
+            menu_options=[
+                "connection",
+                "controls",
+                "add_group",
+                "edit_group",
+                "remove_group",
+                "export_config",
+                "import_config",
+                "diagnostics",
+            ],
         )
 
     async def async_step_connection(self, user_input: dict[str, Any] | None = None):
@@ -450,6 +460,34 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         )
         return self.async_show_form(step_id="remove_group", data_schema=schema)
 
+    async def async_step_export_config(self, user_input: dict[str, Any] | None = None):
+        export_data = json.dumps(self._export_payload(), ensure_ascii=False, sort_keys=True)
+        return self.async_show_form(
+            step_id="export_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("export_data", default=export_data): str,
+                }
+            ),
+        )
+
+    async def async_step_import_config(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                payload = json.loads(user_input["import_data"])
+                options = self._options_from_import(payload)
+            except (TypeError, ValueError, KeyError):
+                errors["base"] = "invalid_import"
+            else:
+                return self.async_create_entry(title="", data=options)
+
+        return self.async_show_form(
+            step_id="import_config",
+            data_schema=vol.Schema({vol.Required("import_data"): str}),
+            errors=errors,
+        )
+
     async def async_step_diagnostics(self, user_input: dict[str, Any] | None = None):
         data = self._current_connection()
         try:
@@ -597,6 +635,45 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_USERNAME: data.get(CONF_USERNAME, ""),
             CONF_PASSWORD: data.get(CONF_PASSWORD, ""),
             CONF_PREFIX: data[CONF_PREFIX],
+        }
+
+    def _export_payload(self) -> dict[str, Any]:
+        return {
+            "version": 1,
+            "domain": DOMAIN,
+            "connection": self._connection_options(),
+            "show_system_devices": self._show_system_devices(),
+            "selected_controls": self._current_selected_controls(),
+            "device_groups": self._current_groups(),
+            "discovered_controls": self._config_entry.options.get(
+                "discovered_controls",
+                self._config_entry.data.get("discovered_controls", {}),
+            ),
+        }
+
+    def _options_from_import(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(payload, dict):
+            raise ValueError("import payload must be an object")
+        if payload.get("domain", DOMAIN) != DOMAIN:
+            raise ValueError("wrong import domain")
+
+        connection = payload.get("connection") or {}
+        selected = [str(key) for key in payload.get("selected_controls", [])]
+        groups = payload.get("device_groups") or {}
+        discovered = payload.get("discovered_controls") or {}
+        if not isinstance(groups, dict) or not isinstance(discovered, dict):
+            raise ValueError("invalid import payload")
+
+        return {
+            CONF_SELECTED_CONTROLS: selected,
+            "discovered_controls": discovered,
+            CONF_DEVICE_GROUPS: groups,
+            CONF_SHOW_SYSTEM_DEVICES: bool(payload.get("show_system_devices", DEFAULT_SHOW_SYSTEM_DEVICES)),
+            CONF_HOST: str(connection.get(CONF_HOST, self._current_connection()[CONF_HOST])),
+            CONF_PORT: int(connection.get(CONF_PORT, self._current_connection()[CONF_PORT])),
+            CONF_USERNAME: str(connection.get(CONF_USERNAME, "")),
+            CONF_PASSWORD: str(connection.get(CONF_PASSWORD, "")),
+            CONF_PREFIX: str(connection.get(CONF_PREFIX, self._current_connection()[CONF_PREFIX])),
         }
 
     def _clear_pending_group(self) -> None:
