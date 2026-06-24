@@ -1,0 +1,142 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wiren Board",
+        "description": "Подключение к MQTT-брокеру Wiren Board.",
+        "data": {
+          "host": "Адрес контроллера",
+          "port": "Порт MQTT",
+          "username": "Пользователь MQTT",
+          "password": "Пароль MQTT",
+          "prefix": "Префикс топиков",
+          "show_system_devices": "Показывать системные устройства"
+        }
+      },
+      "pick_controls": {
+        "title": "Найденные устройства",
+        "description": "Выберите контролы Wiren Board, которые нужно создать в Home Assistant.",
+        "data": {
+          "selected_controls": "Контролы"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться к MQTT-брокеру Wiren Board.",
+      "no_devices_found": "Устройства не найдены. Проверьте MQTT и префикс топиков."
+    },
+    "abort": {
+      "already_configured": "Этот контроллер уже добавлен."
+    }
+  },
+  "options": {
+    "menu": {
+      "init": {
+        "controls": "Выбрать контролы",
+        "add_group": "Добавить или обновить группу",
+        "edit_group": "Редактировать группу",
+        "remove_group": "Удалить группу",
+        "diagnostics": "Диагностика"
+      }
+    },
+    "step": {
+      "init": {
+        "title": "Устройства Wiren Board",
+        "description": "Выберите действие.",
+        "menu_options": {
+          "controls": "Выбрать контролы",
+          "add_group": "Добавить или обновить группу",
+          "edit_group": "Редактировать группу",
+          "remove_group": "Удалить группу",
+          "diagnostics": "Диагностика"
+        }
+      },
+      "controls": {
+        "title": "Контролы Wiren Board",
+        "description": "Обновите список контролов, которые должны быть созданы в Home Assistant.",
+        "data": {
+          "show_system_devices": "Показывать системные устройства",
+          "selected_controls": "Контролы"
+        }
+      },
+      "add_group": {
+        "title": "Группа устройства Home Assistant",
+        "description": "Создайте логическое устройство Home Assistant из контролов разных устройств Wiren Board. Если ID совпадает с существующей группой, она будет обновлена.",
+        "data": {
+          "group_id": "ID группы",
+          "group_name": "Название устройства",
+          "group_type": "Тип устройства",
+          "group_icon": "Иконка",
+          "group_controls": "Контролы в группе"
+        }
+      },
+      "add_group_roles": {
+        "title": "Роли контролов",
+        "description": "Выберите только те роли, которые нужны составной сущности. Контролы из поля \"Оставить отдельными сущностями\" также появятся как обычные sensor/binary_sensor/button/number.",
+        "data": {
+          "command_control": "Команда",
+          "position_control": "Позиция",
+          "state_control": "Состояние",
+          "obstruction_control": "Препятствие / безопасность",
+          "current_temperature_control": "Текущая температура",
+          "target_temperature_control": "Целевая температура",
+          "power_control": "Питание",
+          "mode_control": "Режим",
+          "fan_control": "Вентилятор",
+          "expose_controls": "Оставить отдельными сущностями"
+        }
+      },
+      "edit_group": {
+        "title": "Редактирование группы",
+        "description": "Выберите группу, которую нужно изменить.",
+        "data": {
+          "group_id": "Группа"
+        }
+      },
+      "edit_group_details": {
+        "title": "Состав группы",
+        "description": "Измените название и состав устройства Home Assistant. Контролы, которые уже входят в другие группы, помечены названием группы в квадратных скобках.",
+        "data": {
+          "group_id": "ID группы",
+          "group_name": "Название устройства",
+          "group_type": "Тип устройства",
+          "group_icon": "Иконка",
+          "group_controls": "Контролы в группе"
+        }
+      },
+      "edit_group_roles": {
+        "title": "Роли контролов",
+        "description": "Выберите только те роли, которые нужны составной сущности. Контролы из поля \"Оставить отдельными сущностями\" также появятся как обычные sensor/binary_sensor/button/number.",
+        "data": {
+          "command_control": "Команда",
+          "position_control": "Позиция",
+          "state_control": "Состояние",
+          "obstruction_control": "Препятствие / безопасность",
+          "current_temperature_control": "Текущая температура",
+          "target_temperature_control": "Целевая температура",
+          "power_control": "Питание",
+          "mode_control": "Режим",
+          "fan_control": "Вентилятор",
+          "expose_controls": "Оставить отдельными сущностями"
+        }
+      },
+      "remove_group": {
+        "title": "Удаление группы",
+        "description": "Удалите группировку. Сущности останутся выбранными, но вернутся к своим устройствам Wiren Board.",
+        "data": {
+          "group_id": "Группа"
+        }
+      },
+      "diagnostics": {
+        "title": "Диагностика Wiren Board",
+        "description": "Устройства: {device_count}\nКонтролы: {control_count}\nВыбрано контролов: {selected_count}\nГруппы: {group_count}\nСистемные контролы: {system_control_count}\nУправляемые контролы: {writable_control_count}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
+      }
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться к MQTT-брокеру Wiren Board.",
+      "required": "Заполните поле.",
+      "already_exists": "Группа с таким ID уже существует.",
+      "no_groups": "Группы еще не созданы."
+    }
+  }
+}

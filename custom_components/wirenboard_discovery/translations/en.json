@@ -1,0 +1,142 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wiren Board",
+        "description": "Connect to the Wiren Board MQTT broker.",
+        "data": {
+          "host": "Controller address",
+          "port": "MQTT port",
+          "username": "MQTT username",
+          "password": "MQTT password",
+          "prefix": "Topic prefix",
+          "show_system_devices": "Show system devices"
+        }
+      },
+      "pick_controls": {
+        "title": "Discovered devices",
+        "description": "Select Wiren Board controls to create in Home Assistant.",
+        "data": {
+          "selected_controls": "Controls"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the Wiren Board MQTT broker.",
+      "no_devices_found": "No devices found. Check MQTT and the topic prefix."
+    },
+    "abort": {
+      "already_configured": "This controller is already configured."
+    }
+  },
+  "options": {
+    "menu": {
+      "init": {
+        "controls": "Select controls",
+        "add_group": "Add or update group",
+        "edit_group": "Edit group",
+        "remove_group": "Remove group",
+        "diagnostics": "Diagnostics"
+      }
+    },
+    "step": {
+      "init": {
+        "title": "Wiren Board devices",
+        "description": "Choose an action.",
+        "menu_options": {
+          "controls": "Select controls",
+          "add_group": "Add or update group",
+          "edit_group": "Edit group",
+          "remove_group": "Remove group",
+          "diagnostics": "Diagnostics"
+        }
+      },
+      "controls": {
+        "title": "Wiren Board controls",
+        "description": "Update the controls that should be created in Home Assistant.",
+        "data": {
+          "show_system_devices": "Show system devices",
+          "selected_controls": "Controls"
+        }
+      },
+      "add_group": {
+        "title": "Home Assistant device group",
+        "description": "Create a logical Home Assistant device from controls that belong to different Wiren Board devices. Reuse an existing ID to update that group.",
+        "data": {
+          "group_id": "Group ID",
+          "group_name": "Device name",
+          "group_type": "Device type",
+          "group_icon": "Icon",
+          "group_controls": "Group controls"
+        }
+      },
+      "add_group_roles": {
+        "title": "Control roles",
+        "description": "Select only the roles needed by the composite entity. Controls in \"Expose as separate entities\" will also appear as regular sensor/binary_sensor/button/number entities.",
+        "data": {
+          "command_control": "Command",
+          "position_control": "Position",
+          "state_control": "State",
+          "obstruction_control": "Obstruction / safety",
+          "current_temperature_control": "Current temperature",
+          "target_temperature_control": "Target temperature",
+          "power_control": "Power",
+          "mode_control": "Mode",
+          "fan_control": "Fan",
+          "expose_controls": "Expose as separate entities"
+        }
+      },
+      "edit_group": {
+        "title": "Edit group",
+        "description": "Choose the group you want to edit.",
+        "data": {
+          "group_id": "Group"
+        }
+      },
+      "edit_group_details": {
+        "title": "Group contents",
+        "description": "Change the Home Assistant device name and contents. Controls that already belong to another group are marked with that group name in square brackets.",
+        "data": {
+          "group_id": "Group ID",
+          "group_name": "Device name",
+          "group_type": "Device type",
+          "group_icon": "Icon",
+          "group_controls": "Group controls"
+        }
+      },
+      "edit_group_roles": {
+        "title": "Control roles",
+        "description": "Select only the roles needed by the composite entity. Controls in \"Expose as separate entities\" will also appear as regular sensor/binary_sensor/button/number entities.",
+        "data": {
+          "command_control": "Command",
+          "position_control": "Position",
+          "state_control": "State",
+          "obstruction_control": "Obstruction / safety",
+          "current_temperature_control": "Current temperature",
+          "target_temperature_control": "Target temperature",
+          "power_control": "Power",
+          "mode_control": "Mode",
+          "fan_control": "Fan",
+          "expose_controls": "Expose as separate entities"
+        }
+      },
+      "remove_group": {
+        "title": "Remove group",
+        "description": "Remove a grouping. Entities will stay selected and return to their original Wiren Board devices.",
+        "data": {
+          "group_id": "Group"
+        }
+      },
+      "diagnostics": {
+        "title": "Wiren Board diagnostics",
+        "description": "Devices: {device_count}\nControls: {control_count}\nSelected controls: {selected_count}\nGroups: {group_count}\nSystem controls: {system_control_count}\nWritable controls: {writable_control_count}\nMQTT messages during check: {message_count}\nParse errors: {parse_errors}\nCheck duration, s: {elapsed_seconds}\nTypes: {type_counts}\nLast topic: {last_topic}\nLast value: {last_payload}"
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the Wiren Board MQTT broker.",
+      "required": "Fill in this field.",
+      "already_exists": "A group with this ID already exists.",
+      "no_groups": "No groups have been created yet."
+    }
+  }
+}
