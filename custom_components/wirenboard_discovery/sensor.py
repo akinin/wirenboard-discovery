@@ -49,6 +49,8 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
     control_type = (control.control_type or "").lower()
     units = control.units or control.meta.get("units") or control.meta.get("unit")
     unit = str(units) if units is not None else None
+    unit_key = _normalize_unit(unit)
+    text = f"{control.control_id} {control.control_name or ''}".lower()
 
     mapping = {
         "temperature": {"device_class": "temperature", "unit": unit or "°C"},
@@ -62,12 +64,51 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         "current": {"device_class": "current", "unit": unit or "A"},
         "frequency": {"device_class": "frequency", "unit": unit or "Hz"},
     }
-    metadata = mapping.get(control_type, {"device_class": None, "unit": unit})
+    metadata = mapping.get(control_type) or _metadata_from_unit(unit_key, unit, text) or {"device_class": None, "unit": unit}
+    state_class = "measurement" if _can_float(control.value) else None
+    if metadata.get("device_class") == "energy" and state_class:
+        state_class = "total_increasing"
     return {
         "device_class": metadata.get("device_class"),
         "unit": metadata.get("unit"),
-        "state_class": "measurement" if _can_float(control.value) else None,
+        "state_class": state_class,
     }
+
+
+def _metadata_from_unit(unit_key: str | None, unit: str | None, text: str) -> dict[str, str | None] | None:
+    if unit_key in {"w", "kw"}:
+        return {"device_class": "power", "unit": unit or "W"}
+    if unit_key in {"v", "kv"}:
+        return {"device_class": "voltage", "unit": unit or "V"}
+    if unit_key in {"a", "ma"}:
+        return {"device_class": "current", "unit": unit or "A"}
+    if unit_key in {"wh", "kwh", "mwh"}:
+        return {"device_class": "energy", "unit": unit or "kWh"}
+    if unit_key in {"hz", "khz"}:
+        return {"device_class": "frequency", "unit": unit or "Hz"}
+    if unit_key in {"lx", "lux"}:
+        return {"device_class": "illuminance", "unit": unit or "lx"}
+    if unit_key in {"db", "dba"}:
+        return {"device_class": "sound_pressure", "unit": unit or "dB"}
+    if unit_key in {"c", "°c"}:
+        return {"device_class": "temperature", "unit": unit or "°C"}
+    if unit_key == "%":
+        if any(word in text for word in {"humidity", "влажн"}):
+            return {"device_class": "humidity", "unit": unit or "%"}
+        if any(word in text for word in {"power factor", "cos", "pf", "коэффициент мощности"}):
+            return {"device_class": "power_factor", "unit": unit or "%"}
+        return {"device_class": None, "unit": unit or "%"}
+    if unit_key in {"va", "kva"}:
+        return {"device_class": "apparent_power", "unit": unit or "VA"}
+    if unit_key in {"var", "kvar"}:
+        return {"device_class": "reactive_power", "unit": unit or "var"}
+    return None
+
+
+def _normalize_unit(unit: str | None) -> str | None:
+    if unit is None:
+        return None
+    return unit.strip().replace("℃", "°C").lower()
 
 
 def _can_float(value: str | None) -> bool:

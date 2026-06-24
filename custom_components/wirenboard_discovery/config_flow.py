@@ -46,6 +46,19 @@ def _connection_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
+def _mqtt_connection_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
+    user_input = user_input or {}
+    return vol.Schema(
+        {
+            vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, DEFAULT_HOST)): str,
+            vol.Required(CONF_PORT, default=user_input.get(CONF_PORT, DEFAULT_PORT)): int,
+            vol.Optional(CONF_USERNAME, default=user_input.get(CONF_USERNAME, "")): str,
+            vol.Optional(CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")): str,
+            vol.Required(CONF_PREFIX, default=user_input.get(CONF_PREFIX, DEFAULT_PREFIX)): str,
+        }
+    )
+
+
 def _control_schema(controls: dict[str, WBControl]) -> vol.Schema:
     options = _select_options(controls)
     return vol.Schema(
@@ -154,7 +167,34 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         return self.async_show_menu(
             step_id="init",
-            menu_options=["controls", "add_group", "edit_group", "remove_group", "diagnostics"],
+            menu_options=["connection", "controls", "add_group", "edit_group", "remove_group", "diagnostics"],
+        )
+
+    async def async_step_connection(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                self._controls = await self.hass.async_add_executor_job(
+                    discover_controls,
+                    user_input[CONF_HOST],
+                    user_input[CONF_PORT],
+                    user_input.get(CONF_USERNAME) or None,
+                    user_input.get(CONF_PASSWORD) or None,
+                    user_input[CONF_PREFIX],
+                )
+            except WBDiscoveryError:
+                _LOGGER.exception("Cannot connect to updated Wiren Board MQTT settings")
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_create_entry(
+                    title="",
+                    data=self._options_with(connection=user_input),
+                )
+
+        return self.async_show_form(
+            step_id="connection",
+            data_schema=_mqtt_connection_schema(user_input or self._current_connection()),
+            errors=errors,
         )
 
     async def async_step_controls(self, user_input: dict[str, Any] | None = None):
@@ -411,7 +451,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="remove_group", data_schema=schema)
 
     async def async_step_diagnostics(self, user_input: dict[str, Any] | None = None):
-        data = self._config_entry.data
+        data = self._current_connection()
         try:
             snapshot = await self.hass.async_add_executor_job(
                 discover_snapshot,
@@ -465,7 +505,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         if self._controls:
             return {}
 
-        data = self._config_entry.data
+        data = self._current_connection()
         try:
             self._controls = await self.hass.async_add_executor_job(
                 discover_controls,
@@ -502,6 +542,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         selected_controls: list[str] | None = None,
         device_groups: dict[str, dict[str, Any]] | None = None,
         show_system_devices: bool | None = None,
+        connection: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         selected = selected_controls if selected_controls is not None else self._current_selected_controls()
         groups = device_groups if device_groups is not None else self._current_groups()
@@ -523,6 +564,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             "discovered_controls": controls,
             CONF_DEVICE_GROUPS: groups,
             CONF_SHOW_SYSTEM_DEVICES: show_system,
+            **self._connection_options(connection),
         }
 
     def _show_system_devices(self) -> bool:
@@ -530,6 +572,32 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_SHOW_SYSTEM_DEVICES,
             self._config_entry.data.get(CONF_SHOW_SYSTEM_DEVICES, DEFAULT_SHOW_SYSTEM_DEVICES),
         )
+
+    def _current_connection(self) -> dict[str, Any]:
+        return {
+            CONF_HOST: self._config_entry.options.get(CONF_HOST, self._config_entry.data[CONF_HOST]),
+            CONF_PORT: self._config_entry.options.get(CONF_PORT, self._config_entry.data[CONF_PORT]),
+            CONF_USERNAME: self._config_entry.options.get(
+                CONF_USERNAME,
+                self._config_entry.data.get(CONF_USERNAME, ""),
+            ),
+            CONF_PASSWORD: self._config_entry.options.get(
+                CONF_PASSWORD,
+                self._config_entry.data.get(CONF_PASSWORD, ""),
+            ),
+            CONF_PREFIX: self._config_entry.options.get(CONF_PREFIX, self._config_entry.data[CONF_PREFIX]),
+            CONF_SHOW_SYSTEM_DEVICES: self._show_system_devices(),
+        }
+
+    def _connection_options(self, connection: dict[str, Any] | None = None) -> dict[str, Any]:
+        data = connection or self._current_connection()
+        return {
+            CONF_HOST: data[CONF_HOST],
+            CONF_PORT: data[CONF_PORT],
+            CONF_USERNAME: data.get(CONF_USERNAME, ""),
+            CONF_PASSWORD: data.get(CONF_PASSWORD, ""),
+            CONF_PREFIX: data[CONF_PREFIX],
+        }
 
     def _clear_pending_group(self) -> None:
         self._pending_group_id = None

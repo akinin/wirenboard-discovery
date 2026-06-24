@@ -13,7 +13,7 @@ from .wb_mqtt import WBRuntimeClient
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    data = entry.data
+    data = _entry_connection(entry)
     client = WBRuntimeClient(
         hass.loop,
         data[CONF_HOST],
@@ -57,4 +57,14 @@ def _entry_controls(entry: ConfigEntry) -> dict[str, WBControl]:
         key: control_from_dict(value)
         for key, value in stored.items()
         if key in selected
+    }
+
+
+def _entry_connection(entry: ConfigEntry) -> dict:
+    return {
+        CONF_HOST: entry.options.get(CONF_HOST, entry.data[CONF_HOST]),
+        CONF_PORT: entry.options.get(CONF_PORT, entry.data[CONF_PORT]),
+        CONF_USERNAME: entry.options.get(CONF_USERNAME, entry.data.get(CONF_USERNAME, "")),
+        CONF_PASSWORD: entry.options.get(CONF_PASSWORD, entry.data.get(CONF_PASSWORD, "")),
+        CONF_PREFIX: entry.options.get(CONF_PREFIX, entry.data[CONF_PREFIX]),
     }

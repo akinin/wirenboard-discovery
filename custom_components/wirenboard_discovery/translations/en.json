@@ -32,6 +32,7 @@
   "options": {
     "menu": {
       "init": {
+        "connection": "Connection",
         "controls": "Select controls",
         "add_group": "Add or update group",
         "edit_group": "Edit group",
@@ -45,6 +46,7 @@
         "description": "Choose an action.",
         "menu_options": {
           "controls": "Select controls",
+          "connection": "Connection",
           "add_group": "Add or update group",
           "edit_group": "Edit group",
           "remove_group": "Remove group",
@@ -57,6 +59,17 @@
         "data": {
           "show_system_devices": "Show system devices",
           "selected_controls": "Controls"
+        }
+      },
+      "connection": {
+        "title": "Wiren Board connection",
+        "description": "Change MQTT connection settings. The integration will reload after saving.",
+        "data": {
+          "host": "Controller address",
+          "port": "MQTT port",
+          "username": "MQTT username",
+          "password": "MQTT password",
+          "prefix": "Topic prefix"
         }
       },
       "add_group": {

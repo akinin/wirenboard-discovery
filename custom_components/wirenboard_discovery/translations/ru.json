@@ -32,6 +32,7 @@
   "options": {
     "menu": {
       "init": {
+        "connection": "Подключение",
         "controls": "Выбрать контролы",
         "add_group": "Добавить или обновить группу",
         "edit_group": "Редактировать группу",
@@ -45,6 +46,7 @@
         "description": "Выберите действие.",
         "menu_options": {
           "controls": "Выбрать контролы",
+          "connection": "Подключение",
           "add_group": "Добавить или обновить группу",
           "edit_group": "Редактировать группу",
           "remove_group": "Удалить группу",
@@ -57,6 +59,17 @@
         "data": {
           "show_system_devices": "Показывать системные устройства",
           "selected_controls": "Контролы"
+        }
+      },
+      "connection": {
+        "title": "Подключение к Wiren Board",
+        "description": "Измените параметры MQTT-подключения. После сохранения интеграция будет перезагружена.",
+        "data": {
+          "host": "Адрес контроллера",
+          "port": "Порт MQTT",
+          "username": "Пользователь MQTT",
+          "password": "Пароль MQTT",
+          "prefix": "Префикс топиков"
         }
       },
       "add_group": {
