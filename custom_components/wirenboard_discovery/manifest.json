@@ -3,8 +3,9 @@
   "name": "Wiren Board Discovery",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/4mr/wb-engine",
+  "documentation": "https://git.akinin.su/akininav/wiren-board-discovery",
   "iot_class": "local_push",
+  "issue_tracker": "https://git.akinin.su/akininav/wiren-board-discovery/issues",
   "requirements": ["paho-mqtt==2.1.0"],
   "version": "0.9.0"
 }

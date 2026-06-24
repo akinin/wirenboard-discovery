@@ -2,6 +2,18 @@
 
 Кастомная интеграция Home Assistant для автоматического поиска устройств Wiren Board по MQTT-топикам `/devices/...`.
 
+## Установка через HACS
+
+1. Откройте HACS.
+2. Откройте `Custom repositories`.
+3. Добавьте репозиторий:
+
+`https://git.akinin.su/akininav/wiren-board-discovery`
+
+4. Выберите тип `Integration`.
+5. Установите `Wiren Board Discovery`.
+6. Перезапустите Home Assistant.
+
 ## Что делает
 
 - подключается к MQTT-брокеру Wiren Board;
@@ -12,7 +24,7 @@
 - проставляет классы и единицы измерения для основных сенсоров;
 - отправляет команды записи в стандартный топик Wiren Board `/devices/<device>/controls/<control>/on`.
 
-## Установка
+## Ручная установка
 
 Скопируйте папку `custom_components/wirenboard_discovery` в `config/custom_components/` Home Assistant и перезапустите Home Assistant.
 
