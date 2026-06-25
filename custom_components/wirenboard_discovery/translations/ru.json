@@ -14,10 +14,10 @@
         }
       },
       "pick_controls": {
-        "title": "Найденные устройства",
-        "description": "Выберите контролы Wiren Board, которые нужно создать в Home Assistant.",
+        "title": "Найденные элементы",
+        "description": "Выберите элементы Wiren Board, которые нужно добавить в Home Assistant.",
         "data": {
-          "selected_controls": "Контролы"
+          "selected_controls": "Элементы"
         }
       }
     },
@@ -32,14 +32,14 @@
   "options": {
     "menu": {
       "init": {
-        "connection": "Подключение",
-        "controls": "Выбрать контролы",
+        "controls": "Выбрать элементы",
         "add_group": "Добавить или обновить группу",
         "edit_group": "Редактировать группу",
         "remove_group": "Удалить группу",
         "export_config": "Экспорт конфигурации",
         "import_config": "Импорт конфигурации",
-        "diagnostics": "Диагностика"
+        "diagnostics": "Диагностика",
+        "connection": "Подключение"
       }
     },
     "step": {
@@ -47,7 +47,7 @@
         "title": "Устройства Wiren Board",
         "description": "Выберите действие.",
         "menu_options": {
-          "controls": "Выбрать контролы",
+          "controls": "Выбрать элементы",
           "connection": "Подключение",
           "add_group": "Добавить или обновить группу",
           "edit_group": "Редактировать группу",
@@ -58,11 +58,11 @@
         }
       },
       "controls": {
-        "title": "Контролы Wiren Board",
-        "description": "Обновите список контролов, которые должны быть созданы в Home Assistant.",
+        "title": "Элементы Wiren Board",
+        "description": "Обновите список элементов, которые должны быть созданы в Home Assistant.",
         "data": {
           "show_system_devices": "Показывать системные устройства",
-          "selected_controls": "Контролы"
+          "selected_controls": "Элементы"
         }
       },
       "connection": {
@@ -78,18 +78,18 @@
       },
       "add_group": {
         "title": "Группа устройства Home Assistant",
-        "description": "Создайте логическое устройство Home Assistant из контролов разных устройств Wiren Board. Если ID совпадает с существующей группой, она будет обновлена.",
+        "description": "Создайте логическое устройство Home Assistant из элементов разных устройств Wiren Board. Если ID совпадает с существующей группой, она будет обновлена.",
         "data": {
           "group_id": "ID группы",
           "group_name": "Название устройства",
           "group_type": "Тип устройства",
           "group_icon": "Иконка",
-          "group_controls": "Контролы в группе"
+          "group_controls": "Элементы в группе"
         }
       },
       "add_group_roles": {
-        "title": "Роли контролов",
-        "description": "Выберите только те роли, которые нужны составной сущности. Контролы из поля \"Оставить отдельными сущностями\" также появятся как обычные sensor/binary_sensor/button/number.",
+        "title": "Роли элементов",
+        "description": "Выберите только те роли, которые нужны составной сущности. Элементы из поля \"Оставить отдельными сущностями\" также появятся как обычные sensor/binary_sensor/button/number.",
         "data": {
           "command_control": "Команда",
           "position_control": "Позиция",
@@ -112,18 +112,18 @@
       },
       "edit_group_details": {
         "title": "Состав группы",
-        "description": "Измените название и состав устройства Home Assistant. Контролы, которые уже входят в другие группы, помечены названием группы в квадратных скобках.",
+        "description": "Измените название и состав устройства Home Assistant. Элементы, которые уже входят в другие группы, помечены названием группы в квадратных скобках.",
         "data": {
           "group_id": "ID группы",
           "group_name": "Название устройства",
           "group_type": "Тип устройства",
           "group_icon": "Иконка",
-          "group_controls": "Контролы в группе"
+          "group_controls": "Элементы в группе"
         }
       },
       "edit_group_roles": {
-        "title": "Роли контролов",
-        "description": "Выберите только те роли, которые нужны составной сущности. Контролы из поля \"Оставить отдельными сущностями\" также появятся как обычные sensor/binary_sensor/button/number.",
+        "title": "Роли элементов",
+        "description": "Выберите только те роли, которые нужны составной сущности. Элементы из поля \"Оставить отдельными сущностями\" также появятся как обычные sensor/binary_sensor/button/number.",
         "data": {
           "command_control": "Команда",
           "position_control": "Позиция",
@@ -146,7 +146,7 @@
       },
       "export_config": {
         "title": "Экспорт конфигурации",
-        "description": "Скопируйте JSON ниже. Он содержит параметры подключения, выбранные контролы, группы, роли и сохраненные описания контролов.",
+        "description": "Скопируйте JSON ниже. Он содержит параметры подключения, выбранные элементы, группы, роли и сохранённые описания элементов.",
         "data": {
           "export_data": "JSON"
         }
@@ -160,7 +160,7 @@
       },
       "diagnostics": {
         "title": "Диагностика Wiren Board",
-        "description": "Устройства: {device_count}\nКонтролы: {control_count}\nВыбрано контролов: {selected_count}\nГруппы: {group_count}\nСистемные контролы: {system_control_count}\nУправляемые контролы: {writable_control_count}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
+        "description": "Устройства: {device_count}\nЭлементы: {control_count}\nВыбрано элементов: {selected_count}\nГруппы: {group_count}\nСистемные элементы: {system_control_count}\nУправляемые элементы: {writable_control_count}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
       }
     },
     "error": {
@@ -168,7 +168,7 @@
       "required": "Заполните поле.",
       "already_exists": "Группа с таким ID уже существует.",
       "invalid_import": "Не удалось прочитать JSON импорта.",
-      "no_groups": "Группы еще не созданы."
+      "no_groups": "Группы ещё не созданы."
     }
   }
 }
