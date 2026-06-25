@@ -1,11 +1,11 @@
 {
   "domain": "wirenboard_discovery",
-  "name": "Wiren Board Discovery",
+  "name": "WirenBoard Discovery",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://git.akinin.su/akininav/wiren-board-discovery",
+  "documentation": "https://github.com/akinin/wirenboard-discovery",
   "iot_class": "local_push",
-  "issue_tracker": "https://git.akinin.su/akininav/wiren-board-discovery/issues",
+  "issue_tracker": "https://github.com/akinin/wirenboard-discovery/issues",
   "requirements": ["paho-mqtt==2.1.0"],
   "version": "0.9.0"
 }
