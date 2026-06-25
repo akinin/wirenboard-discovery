@@ -19,13 +19,13 @@ jobs:
       - name: Prepare release
         run: |
           cd ${{ github.workspace }}/custom_components/wirenboard_discovery
-          zip -r ${{ github.workspace }}/wirenboard-discovery.zip ./
+          zip -r ${{ github.workspace }}/wirenboard_discovery.zip ./
 
       - name: Upload zip
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ github.workspace }}/wirenboard-discovery.zip
-          asset_name: wirenboard-discovery.zip
+          file: ${{ github.workspace }}/wirenboard_discovery.zip
+          asset_name: wirenboard_discovery.zip
           tag: ${{ github.ref }}
           overwrite: true
