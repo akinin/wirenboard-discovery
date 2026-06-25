@@ -134,14 +134,14 @@
       },
       "export_config": {
         "title": "Export configuration",
-        "description": "Save the configuration to a JSON file inside /config. The file contains connection settings, selected items, groups, roles, and stored item metadata.",
+        "description": "To download to this computer, open this link: {download_url}\n\nYou can also save the configuration to a JSON file inside /config. The file contains connection settings, selected items, groups, roles, and stored item metadata.",
         "data": {
           "export_file": "File"
         }
       },
       "export_config_done": {
         "title": "Export configuration",
-        "description": "Configuration saved to file: {export_file}"
+        "description": "Configuration saved to file: {export_file}\n\nTo download to this computer, open this link: {download_url}"
       },
       "import_config": {
         "title": "Import configuration",

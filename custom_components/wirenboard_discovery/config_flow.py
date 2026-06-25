@@ -13,6 +13,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
+from .config_backup import build_export_payload
 from .composite import TYPE_AC, TYPE_COVER, TYPE_COVER_GATE, TYPE_DEVICE, TYPE_THERMOSTAT, default_group_type
 from .const import (
     CONF_DEVICE_GROUPS,
@@ -465,6 +466,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_export_config(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
+        download_url = self._download_url()
         if user_input is not None:
             try:
                 export_path = self._config_file_path(user_input["export_file"])
@@ -477,7 +479,10 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 return self.async_show_form(
                     step_id="export_config_done",
                     data_schema=vol.Schema({}),
-                    description_placeholders={"export_file": str(export_path)},
+                    description_placeholders={
+                        "export_file": str(export_path),
+                        "download_url": download_url,
+                    },
                 )
 
         return self.async_show_form(
@@ -488,6 +493,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 }
             ),
             errors=errors,
+            description_placeholders={"download_url": download_url},
         )
 
     async def async_step_import_config(self, user_input: dict[str, Any] | None = None):
@@ -661,18 +667,10 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         }
 
     def _export_payload(self) -> dict[str, Any]:
-        return {
-            "version": 1,
-            "domain": DOMAIN,
-            "connection": self._connection_options(),
-            "show_system_devices": self._show_system_devices(),
-            "selected_controls": self._current_selected_controls(),
-            "device_groups": self._current_groups(),
-            "discovered_controls": self._config_entry.options.get(
-                "discovered_controls",
-                self._config_entry.data.get("discovered_controls", {}),
-            ),
-        }
+        return build_export_payload(self._config_entry)
+
+    def _download_url(self) -> str:
+        return f"/api/wirenboard_discovery/{self._config_entry.entry_id}/export"
 
     def _options_from_import(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):

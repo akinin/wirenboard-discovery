@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
+
+from aiohttp import web
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
 from .config_flow import control_from_dict
+from .config_backup import build_export_payload
 from .composite import composite_control_keys, normalize_groups
 from .const import CONF_DEVICE_GROUPS, CONF_PREFIX, CONF_SELECTED_CONTROLS, DOMAIN, PLATFORMS
 from .device_groups import apply_device_groups
@@ -13,6 +18,11 @@ from .wb_mqtt import WBRuntimeClient
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get("http_export_view_registered"):
+        hass.http.register_view(WBExportView)
+        domain_data["http_export_view_registered"] = True
+
     data = _entry_connection(entry)
     client = WBRuntimeClient(
         hass.loop,
@@ -27,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     controls = _entry_controls(entry)
     groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
     apply_device_groups(hass, controls, groups)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+    domain_data[entry.entry_id] = {
         "client": client,
         "controls": controls,
         "groups": groups,
@@ -36,6 +46,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+class WBExportView(HomeAssistantView):
+    url = "/api/wirenboard_discovery/{entry_id}/export"
+    name = "api:wirenboard_discovery:export"
+    requires_auth = True
+
+    async def get(self, request, entry_id: str) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is None or entry.domain != DOMAIN:
+            raise web.HTTPNotFound()
+
+        payload = build_export_payload(entry)
+        body = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        filename = f"wirenboard_discovery_{entry.entry_id}.json"
+        return web.Response(
+            text=body,
+            content_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

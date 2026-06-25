@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.4
+
+- Added an authenticated browser download link for configuration export.
+
 ## 0.9.3
 
 - Moved connection settings below diagnostics in the options menu.
