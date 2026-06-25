@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from pathlib import Path
 import re
 from typing import Any
 
@@ -13,7 +12,6 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from .config_backup import build_export_payload
 from .composite import TYPE_AC, TYPE_COVER, TYPE_COVER_GATE, TYPE_DEVICE, TYPE_THERMOSTAT, default_group_type
 from .const import (
     CONF_DEVICE_GROUPS,
@@ -30,8 +28,6 @@ from .models import WBControl
 from .wb_mqtt import WBDiscoveryError, discover_controls, discover_snapshot
 
 _LOGGER = logging.getLogger(__name__)
-
-DEFAULT_EXPORT_FILE = "wirenboard_discovery_export.json"
 
 
 def _connection_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
@@ -465,55 +461,41 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="remove_group", data_schema=schema)
 
     async def async_step_export_config(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-        download_url = self._download_url()
         if user_input is not None:
-            try:
-                export_path = self._config_file_path(user_input["export_file"])
-                payload = self._export_payload()
-                await self.hass.async_add_executor_job(self._write_json_file, export_path, payload)
-            except OSError:
-                _LOGGER.exception("Cannot write Wiren Board Discovery export file")
-                errors["base"] = "cannot_write_file"
-            else:
-                return self.async_show_form(
-                    step_id="export_config_done",
-                    data_schema=vol.Schema({}),
-                    description_placeholders={
-                        "export_file": str(export_path),
-                        "download_url": download_url,
-                    },
-                )
+            return self.async_create_entry(title="", data=self._options_with())
 
+        export_json = self._export_json()
         return self.async_show_form(
             step_id="export_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required("export_file", default=DEFAULT_EXPORT_FILE): str,
+                    vol.Optional("export_json", default=export_json): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    ),
                 }
             ),
-            errors=errors,
-            description_placeholders={"download_url": download_url},
         )
 
     async def async_step_import_config(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                import_path = self._config_file_path(user_input["import_file"])
-                payload = await self.hass.async_add_executor_job(self._read_json_file, import_path)
+                payload = json.loads(user_input["import_json"])
                 options = self._options_from_import(payload)
-            except OSError:
-                _LOGGER.exception("Cannot read Wiren Board Discovery import file")
-                errors["base"] = "cannot_read_file"
-            except (TypeError, ValueError, KeyError):
+            except (json.JSONDecodeError, TypeError, ValueError, KeyError):
                 errors["base"] = "invalid_import"
             else:
                 return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
             step_id="import_config",
-            data_schema=vol.Schema({vol.Required("import_file", default=DEFAULT_EXPORT_FILE): str}),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("import_json", default=""): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    ),
+                }
+            ),
             errors=errors,
         )
 
@@ -667,10 +649,21 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         }
 
     def _export_payload(self) -> dict[str, Any]:
-        return build_export_payload(self._config_entry)
+        return {
+            "version": 1,
+            "domain": DOMAIN,
+            "connection": self._connection_options(),
+            "show_system_devices": self._show_system_devices(),
+            "selected_controls": self._current_selected_controls(),
+            "device_groups": self._current_groups(),
+            "discovered_controls": self._config_entry.options.get(
+                "discovered_controls",
+                self._config_entry.data.get("discovered_controls", {}),
+            ),
+        }
 
-    def _download_url(self) -> str:
-        return f"/api/wirenboard_discovery/{self._config_entry.entry_id}/export"
+    def _export_json(self) -> str:
+        return json.dumps(self._export_payload(), ensure_ascii=False, indent=2, sort_keys=True)
 
     def _options_from_import(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):
@@ -696,28 +689,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_PASSWORD: str(connection.get(CONF_PASSWORD, "")),
             CONF_PREFIX: str(connection.get(CONF_PREFIX, self._current_connection()[CONF_PREFIX])),
         }
-
-    def _config_file_path(self, filename: str) -> Path:
-        value = str(filename).strip()
-        if not value:
-            raise OSError("empty file name")
-        path = Path(value)
-        if path.is_absolute():
-            return path
-        return Path(self.hass.config.path(value))
-
-    @staticmethod
-    def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-
-    @staticmethod
-    def _read_json_file(path: Path) -> dict[str, Any]:
-        with path.open(encoding="utf-8") as file:
-            return json.load(file)
 
     def _clear_pending_group(self) -> None:
         self._pending_group_id = None
