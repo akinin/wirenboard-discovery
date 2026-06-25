@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from pathlib import Path
 import re
 from typing import Any
 
@@ -28,6 +29,8 @@ from .models import WBControl
 from .wb_mqtt import WBDiscoveryError, discover_controls, discover_snapshot
 
 _LOGGER = logging.getLogger(__name__)
+
+DEFAULT_EXPORT_FILE = "wirenboard_discovery_export.json"
 
 
 def _connection_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
@@ -169,7 +172,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
-                "connection",
                 "controls",
                 "add_group",
                 "edit_group",
@@ -177,6 +179,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 "export_config",
                 "import_config",
                 "diagnostics",
+                "connection",
             ],
         )
 
@@ -461,22 +464,42 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="remove_group", data_schema=schema)
 
     async def async_step_export_config(self, user_input: dict[str, Any] | None = None):
-        export_data = json.dumps(self._export_payload(), ensure_ascii=False, sort_keys=True)
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                export_path = self._config_file_path(user_input["export_file"])
+                payload = self._export_payload()
+                await self.hass.async_add_executor_job(self._write_json_file, export_path, payload)
+            except OSError:
+                _LOGGER.exception("Cannot write Wiren Board Discovery export file")
+                errors["base"] = "cannot_write_file"
+            else:
+                return self.async_show_form(
+                    step_id="export_config_done",
+                    data_schema=vol.Schema({}),
+                    description_placeholders={"export_file": str(export_path)},
+                )
+
         return self.async_show_form(
             step_id="export_config",
             data_schema=vol.Schema(
                 {
-                    vol.Optional("export_data", default=export_data): str,
+                    vol.Required("export_file", default=DEFAULT_EXPORT_FILE): str,
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_import_config(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                payload = json.loads(user_input["import_data"])
+                import_path = self._config_file_path(user_input["import_file"])
+                payload = await self.hass.async_add_executor_job(self._read_json_file, import_path)
                 options = self._options_from_import(payload)
+            except OSError:
+                _LOGGER.exception("Cannot read Wiren Board Discovery import file")
+                errors["base"] = "cannot_read_file"
             except (TypeError, ValueError, KeyError):
                 errors["base"] = "invalid_import"
             else:
@@ -484,7 +507,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="import_config",
-            data_schema=vol.Schema({vol.Required("import_data"): str}),
+            data_schema=vol.Schema({vol.Required("import_file", default=DEFAULT_EXPORT_FILE): str}),
             errors=errors,
         )
 
@@ -675,6 +698,28 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_PASSWORD: str(connection.get(CONF_PASSWORD, "")),
             CONF_PREFIX: str(connection.get(CONF_PREFIX, self._current_connection()[CONF_PREFIX])),
         }
+
+    def _config_file_path(self, filename: str) -> Path:
+        value = str(filename).strip()
+        if not value:
+            raise OSError("empty file name")
+        path = Path(value)
+        if path.is_absolute():
+            return path
+        return Path(self.hass.config.path(value))
+
+    @staticmethod
+    def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _read_json_file(path: Path) -> dict[str, Any]:
+        with path.open(encoding="utf-8") as file:
+            return json.load(file)
 
     def _clear_pending_group(self) -> None:
         self._pending_group_id = None

@@ -36,13 +36,13 @@
         "description": "Choose an action.",
         "menu_options": {
           "controls": "Select items",
-          "connection": "Connection",
           "add_group": "Add or update group",
           "edit_group": "Edit group",
           "remove_group": "Remove group",
           "export_config": "Export configuration",
           "import_config": "Import configuration",
-          "diagnostics": "Diagnostics"
+          "diagnostics": "Diagnostics",
+          "connection": "Connection"
         }
       },
       "controls": {
@@ -134,16 +134,20 @@
       },
       "export_config": {
         "title": "Export configuration",
-        "description": "Copy the JSON below. It contains connection settings, selected items, groups, roles, and stored item metadata.",
+        "description": "Save the configuration to a JSON file inside /config. The file contains connection settings, selected items, groups, roles, and stored item metadata.",
         "data": {
-          "export_data": "JSON"
+          "export_file": "File"
         }
+      },
+      "export_config_done": {
+        "title": "Export configuration",
+        "description": "Configuration saved to file: {export_file}"
       },
       "import_config": {
         "title": "Import configuration",
-        "description": "Paste JSON created by the export screen. The integration will reload after saving.",
+        "description": "Enter a JSON file created by the export screen. The integration will reload after saving.",
         "data": {
-          "import_data": "JSON"
+          "import_file": "File"
         }
       },
       "diagnostics": {
@@ -156,6 +160,8 @@
       "required": "Fill in this field.",
       "already_exists": "A group with this ID already exists.",
       "invalid_import": "Could not read import JSON.",
+      "cannot_write_file": "Could not write export file.",
+      "cannot_read_file": "Could not read import file.",
       "no_groups": "No groups have been created yet."
     }
   }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.3
+
+- Moved connection settings below diagnostics in the options menu.
+- Changed configuration export/import to use JSON files in `/config`.
+
 ## 0.9.0
 
 - Added configuration export and import.
