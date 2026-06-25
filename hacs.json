@@ -1,6 +1,6 @@
 {
   "name": "WirenBoard Discovery",
-  "homeassistant": "2026.6.0"
+  "homeassistant": "2026.6.0",
   "country": ["ALL"],
   "render_readme": true,
   "zip_release": true,
