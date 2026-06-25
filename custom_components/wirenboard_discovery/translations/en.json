@@ -14,10 +14,10 @@
         }
       },
       "pick_controls": {
-        "title": "Discovered devices",
-        "description": "Select Wiren Board controls to create in Home Assistant.",
+        "title": "Discovered items",
+        "description": "Select Wiren Board items to add to Home Assistant.",
         "data": {
-          "selected_controls": "Controls"
+          "selected_controls": "Items"
         }
       }
     },
@@ -30,24 +30,12 @@
     }
   },
   "options": {
-    "menu": {
-      "init": {
-        "connection": "Connection",
-        "controls": "Select controls",
-        "add_group": "Add or update group",
-        "edit_group": "Edit group",
-        "remove_group": "Remove group",
-        "export_config": "Export configuration",
-        "import_config": "Import configuration",
-        "diagnostics": "Diagnostics"
-      }
-    },
     "step": {
       "init": {
         "title": "Wiren Board devices",
         "description": "Choose an action.",
         "menu_options": {
-          "controls": "Select controls",
+          "controls": "Select items",
           "connection": "Connection",
           "add_group": "Add or update group",
           "edit_group": "Edit group",
@@ -58,11 +46,11 @@
         }
       },
       "controls": {
-        "title": "Wiren Board controls",
-        "description": "Update the controls that should be created in Home Assistant.",
+        "title": "Wiren Board items",
+        "description": "Select Wiren Board items to add to Home Assistant as entities.",
         "data": {
           "show_system_devices": "Show system devices",
-          "selected_controls": "Controls"
+          "selected_controls": "Items"
         }
       },
       "connection": {
@@ -78,18 +66,18 @@
       },
       "add_group": {
         "title": "Home Assistant device group",
-        "description": "Create a logical Home Assistant device from controls that belong to different Wiren Board devices. Reuse an existing ID to update that group.",
+        "description": "Create a logical Home Assistant device from items that belong to different Wiren Board devices. Reuse an existing ID to update that group.",
         "data": {
           "group_id": "Group ID",
           "group_name": "Device name",
           "group_type": "Device type",
           "group_icon": "Icon",
-          "group_controls": "Group controls"
+          "group_controls": "Group items"
         }
       },
       "add_group_roles": {
-        "title": "Control roles",
-        "description": "Select only the roles needed by the composite entity. Controls in \"Expose as separate entities\" will also appear as regular sensor/binary_sensor/button/number entities.",
+        "title": "Item roles",
+        "description": "Select only the roles needed by the composite entity. Items in \"Expose as separate entities\" will also appear as regular sensor/binary_sensor/button/number entities.",
         "data": {
           "command_control": "Command",
           "position_control": "Position",
@@ -112,18 +100,18 @@
       },
       "edit_group_details": {
         "title": "Group contents",
-        "description": "Change the Home Assistant device name and contents. Controls that already belong to another group are marked with that group name in square brackets.",
+        "description": "Change the Home Assistant device name and contents. Items that already belong to another group are marked with that group name in square brackets.",
         "data": {
           "group_id": "Group ID",
           "group_name": "Device name",
           "group_type": "Device type",
           "group_icon": "Icon",
-          "group_controls": "Group controls"
+          "group_controls": "Group items"
         }
       },
       "edit_group_roles": {
-        "title": "Control roles",
-        "description": "Select only the roles needed by the composite entity. Controls in \"Expose as separate entities\" will also appear as regular sensor/binary_sensor/button/number entities.",
+        "title": "Item roles",
+        "description": "Select only the roles needed by the composite entity. Items in \"Expose as separate entities\" will also appear as regular sensor/binary_sensor/button/number entities.",
         "data": {
           "command_control": "Command",
           "position_control": "Position",
@@ -146,7 +134,7 @@
       },
       "export_config": {
         "title": "Export configuration",
-        "description": "Copy the JSON below. It contains connection settings, selected controls, groups, roles, and stored control metadata.",
+        "description": "Copy the JSON below. It contains connection settings, selected items, groups, roles, and stored item metadata.",
         "data": {
           "export_data": "JSON"
         }
@@ -160,7 +148,7 @@
       },
       "diagnostics": {
         "title": "Wiren Board diagnostics",
-        "description": "Devices: {device_count}\nControls: {control_count}\nSelected controls: {selected_count}\nGroups: {group_count}\nSystem controls: {system_control_count}\nWritable controls: {writable_control_count}\nMQTT messages during check: {message_count}\nParse errors: {parse_errors}\nCheck duration, s: {elapsed_seconds}\nTypes: {type_counts}\nLast topic: {last_topic}\nLast value: {last_payload}"
+        "description": "Devices: {device_count}\nItems: {control_count}\nSelected items: {selected_count}\nGroups: {group_count}\nSystem items: {system_control_count}\nWritable items: {writable_control_count}\nMQTT messages during check: {message_count}\nParse errors: {parse_errors}\nCheck duration, s: {elapsed_seconds}\nTypes: {type_counts}\nLast topic: {last_topic}\nLast value: {last_payload}"
       }
     },
     "error": {
