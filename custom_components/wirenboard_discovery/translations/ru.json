@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Wiren Board",
-        "description": "Подключение к MQTT-брокеру Wiren Board.",
+        "title": "WirenBoard",
+        "description": "Подключение к MQTT-брокеру WirenBoard.",
         "data": {
           "host": "Адрес контроллера",
           "port": "Порт MQTT",
@@ -15,14 +15,14 @@
       },
       "pick_controls": {
         "title": "Найденные устройства",
-        "description": "Выберите контролы Wiren Board, которые нужно создать в Home Assistant.",
+        "description": "Выберите контролы WirenBoard, которые нужно создать в HomeAssistant.",
         "data": {
           "selected_controls": "Контролы"
         }
       }
     },
     "error": {
-      "cannot_connect": "Не удалось подключиться к MQTT-брокеру Wiren Board.",
+      "cannot_connect": "Не удалось подключиться к MQTT-брокеру WirenBoard.",
       "no_devices_found": "Устройства не найдены. Проверьте MQTT и префикс топиков."
     },
     "abort": {
@@ -44,7 +44,7 @@
     },
     "step": {
       "init": {
-        "title": "Устройства Wiren Board",
+        "title": "Устройства WirenBoard",
         "description": "Выберите действие.",
         "menu_options": {
           "controls": "Выбрать контролы",
@@ -58,15 +58,15 @@
         }
       },
       "controls": {
-        "title": "Контролы Wiren Board",
-        "description": "Обновите список контролов, которые должны быть созданы в Home Assistant.",
+        "title": "Контролы WirenBoard",
+        "description": "Обновите список контролов, которые должны быть созданы в HomeAssistant.",
         "data": {
           "show_system_devices": "Показывать системные устройства",
           "selected_controls": "Контролы"
         }
       },
       "connection": {
-        "title": "Подключение к Wiren Board",
+        "title": "Подключение к WirenBoard",
         "description": "Измените параметры MQTT-подключения. После сохранения интеграция будет перезагружена.",
         "data": {
           "host": "Адрес контроллера",
@@ -77,8 +77,8 @@
         }
       },
       "add_group": {
-        "title": "Группа устройства Home Assistant",
-        "description": "Создайте логическое устройство Home Assistant из контролов разных устройств Wiren Board. Если ID совпадает с существующей группой, она будет обновлена.",
+        "title": "Группа устройства HomeAssistant",
+        "description": "Создайте логическое устройство HomeAssistant из контролов разных устройств WirenBoard. Если ID совпадает с существующей группой, она будет обновлена.",
         "data": {
           "group_id": "ID группы",
           "group_name": "Название устройства",
@@ -112,7 +112,7 @@
       },
       "edit_group_details": {
         "title": "Состав группы",
-        "description": "Измените название и состав устройства Home Assistant. Контролы, которые уже входят в другие группы, помечены названием группы в квадратных скобках.",
+        "description": "Измените название и состав устройства HomeAssistant. Контролы, которые уже входят в другие группы, помечены названием группы в квадратных скобках.",
         "data": {
           "group_id": "ID группы",
           "group_name": "Название устройства",
@@ -139,7 +139,7 @@
       },
       "remove_group": {
         "title": "Удаление группы",
-        "description": "Удалите группировку. Сущности останутся выбранными, но вернутся к своим устройствам Wiren Board.",
+        "description": "Удалите группировку. Сущности останутся выбранными, но вернутся к своим устройствам WirenBoard.",
         "data": {
           "group_id": "Группа"
         }
@@ -159,12 +159,12 @@
         }
       },
       "diagnostics": {
-        "title": "Диагностика Wiren Board",
+        "title": "Диагностика WirenBoard",
         "description": "Устройства: {device_count}\nКонтролы: {control_count}\nВыбрано контролов: {selected_count}\nГруппы: {group_count}\nСистемные контролы: {system_control_count}\nУправляемые контролы: {writable_control_count}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
       }
     },
     "error": {
-      "cannot_connect": "Не удалось подключиться к MQTT-брокеру Wiren Board.",
+      "cannot_connect": "Не удалось подключиться к MQTT-брокеру WirenBoard.",
       "required": "Заполните поле.",
       "already_exists": "Группа с таким ID уже существует.",
       "invalid_import": "Не удалось прочитать JSON импорта.",
