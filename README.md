@@ -1,4 +1,6 @@
-# WirenBoard Discovery for Home Assistant
+# Wiren Board Discovery for Home Assistant (unofficial)
+
+> Данная интеграция не является официальной, не поддерживается и не аффилирована с компанией Wiren Board.
 
 Кастомная интеграция Home Assistant для добавления устройств Wiren Board по MQTT-топикам `/devices/...`.
 
@@ -18,7 +20,7 @@
 2. Откройте `Custom repositories`.
 3. Добавьте репозиторий:
 
-`https://git.akinin.su/akininav/wiren-board-discovery`
+`https://github.com/akinin/wirenboard-discovery`
 
 4. Выберите тип `Integration`.
 5. Установите `Wiren Board Discovery`.
@@ -32,7 +34,7 @@
 
 После перезапуска откройте:
 
-`Настройки -> Устройства и службы -> Добавить интеграцию -> WirenBoard Discovery`
+`Настройки -> Устройства и службы -> Добавить интеграцию -> Wiren Board Discovery`
 
 <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration.png" />
 
@@ -43,13 +45,13 @@
 
 
 В процессе будет запрос на выбор элементов, для автоматической группировке по устройствам.
-<img src="/images/elements.png" width="400"/> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/elements_2.png" width="400"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/elements.png" width="400"/> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/elements_2.png" width="400"/>
 
 <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_3.png" />
 
 ## Логические устройства
 
-Для создания логического устройства нужно добавить группу. Через интерфейс Home Assistant откройте интеграцию WirenBoard Discovery, нажмите `Настроить`, затем `Добавить или обновить группу`.
+Для создания логического устройства нужно добавить группу. Через интерфейс Home Assistant откройте интеграцию Wiren Board Discovery, нажмите `Настроить`, затем `Добавить или обновить группу`.
 Группа может быть обычным HA-устройством или составной сущностью: ворота, шторы/роллеты, термостат, кондиционер. Для составных сущностей можно указать роли элементов: команда, позиция, состояние, препятствие, текущая и целевая температура, питание, режим, вентилятор.
 
 <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/group.png" width="400"/>
