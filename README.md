@@ -34,42 +34,42 @@
 
 `Настройки -> Устройства и службы -> Добавить интеграцию -> WirenBoard Discovery`
 
-<img src="/images/add_integration.png" />
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration.png" />
 
 Введите параметры подключения.
 > Параметры подключения можно изменить позже через `Настроить -> Подключение`: адрес, порт, логин, пароль и префикс MQTT-топиков.
 
-<img src="/images/menu.png" width="400" /> <img src="/images/add_integration_2.png" width="400" />
+<img src="/images/menu.png" width="400" /> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_2.png" width="400" />
 
 
 В процессе будет запрос на выбор элементов, для автоматической группировке по устройствам.
-<img src="/images/elements.png" width="400"/> <img src="/images/elements_2.png" width="400"/>
+<img src="/images/elements.png" width="400"/> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/elements_2.png" width="400"/>
 
-<img src="/images/add_integration_3.png" />
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_3.png" />
 
 ## Логические устройства
 
 Для создания логического устройства нужно добавить группу. Через интерфейс Home Assistant откройте интеграцию WirenBoard Discovery, нажмите `Настроить`, затем `Добавить или обновить группу`.
 Группа может быть обычным HA-устройством или составной сущностью: ворота, шторы/роллеты, термостат, кондиционер. Для составных сущностей можно указать роли элементов: команда, позиция, состояние, препятствие, текущая и целевая температура, питание, режим, вентилятор.
 
-<img src="/images/group.png" width="400"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/group.png" width="400"/>
 
 Если элемент нужен и внутри составной сущности, и отдельно для автоматизаций, добавьте его в `Оставить отдельными сущностями`.
 
-<img src="/images/roles.png" width="400"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/roles.png" width="400"/>
 
 В дальнейшем группу можно редактировать.
 
-<img src="/images/group_edit.png" width="600"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/group_edit.png" width="600"/>
 
 Пример додавленных ворот:
 
-<img src="/images/gate.png" width="600"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/gate.png" width="600"/>
 
 Автоматическая группировка сама создает устройства на основе выбранных элементов.
 
-<img src="/images/main_window.png" width="600"/>
-<img src="/images/auto_groups.png" width="600"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/main_window.png" width="600"/>
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/auto_groups.png" width="600"/>
 
 ## Экспорт / импорт конфигурации интеграции
 
