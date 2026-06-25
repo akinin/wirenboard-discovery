@@ -30,18 +30,6 @@
     }
   },
   "options": {
-    "menu": {
-      "init": {
-        "controls": "Выбрать элементы",
-        "add_group": "Добавить или обновить группу",
-        "edit_group": "Редактировать группу",
-        "remove_group": "Удалить группу",
-        "export_config": "Экспорт конфигурации",
-        "import_config": "Импорт конфигурации",
-        "diagnostics": "Диагностика",
-        "connection": "Подключение"
-      }
-    },
     "step": {
       "init": {
         "title": "Устройства Wiren Board",
