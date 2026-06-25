@@ -39,7 +39,7 @@
 Введите параметры подключения.
 > Параметры подключения можно изменить позже через `Настроить -> Подключение`: адрес, порт, логин, пароль и префикс MQTT-топиков.
 
-<img src="/images/menu.png" width="400" /> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_2.png" width="400" />
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/menu.png" width="400" /> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_2.png" width="400" />
 
 
 В процессе будет запрос на выбор элементов, для автоматической группировке по устройствам.
