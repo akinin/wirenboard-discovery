@@ -36,6 +36,7 @@ def _is_number(control: WBControl) -> bool:
 class WBNumber(WBEntity, NumberEntity):
     def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
+        self._attr_device_class = control.ha_device_class or None
         self._attr_native_min_value = _float_meta(control, "min", 0)
         self._attr_native_max_value = _float_meta(control, "max", 100)
         self._attr_native_unit_of_measurement = control.units or control.meta.get("units") or control.meta.get("unit")

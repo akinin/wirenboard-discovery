@@ -80,8 +80,9 @@ def _apply_object_override(control: WBControl, override: object) -> None:
         return
     if override.get("name"):
         control.ha_entity_name = str(override["name"])
-    if override.get("type"):
-        control.ha_platform = str(override["type"])
+    platform = override.get("platform") or override.get("type")
+    if platform:
+        control.ha_platform = str(platform)
     if override.get("device_class"):
         control.ha_device_class = str(override["device_class"])
     if override.get("icon"):

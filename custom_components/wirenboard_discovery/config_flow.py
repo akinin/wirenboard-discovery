@@ -483,10 +483,13 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                     default=override.get("name") or control.control_name or control.control_id,
                 ): str,
                 vol.Required(
+                    "object_platform",
+                    default=override.get("platform") or override.get("type") or _auto_object_platform(control),
+                ): selector.SelectSelector(selector.SelectSelectorConfig(options=_object_platform_options())),
+                vol.Required(
                     "object_type",
-                    default=override.get("type") or _auto_object_type(control),
-                ): selector.SelectSelector(selector.SelectSelectorConfig(options=_object_type_options())),
-                vol.Optional("object_device_class", default=override.get("device_class") or ""): str,
+                    default=override.get("device_class") or "auto",
+                ): selector.SelectSelector(selector.SelectSelectorConfig(options=_object_device_class_options())),
                 vol.Optional("object_icon", default=override.get("icon") or ""): str,
                 vol.Optional("remove_object", default=False): bool,
             }
@@ -883,7 +886,7 @@ def _group_type_options() -> list[selector.SelectOptionDict]:
     ]
 
 
-def _object_type_options() -> list[selector.SelectOptionDict]:
+def _object_platform_options() -> list[selector.SelectOptionDict]:
     return [
         selector.SelectOptionDict(value="auto", label="Auto / Авто"),
         selector.SelectOptionDict(value="sensor", label="Sensor / Датчик"),
@@ -903,7 +906,7 @@ def _group_controls(controls: dict[str, WBControl], group: dict[str, Any]) -> di
     }
 
 
-def _auto_object_type(control: WBControl) -> str:
+def _auto_object_platform(control: WBControl) -> str:
     if control.control_type == "switch":
         return "binary_sensor" if control.is_readonly else "switch"
     if control.control_type == "pushbutton" and not control.is_readonly:
@@ -918,14 +921,42 @@ def _auto_object_type(control: WBControl) -> str:
     return "sensor"
 
 
+def _object_device_class_options() -> list[selector.SelectOptionDict]:
+    return [
+        selector.SelectOptionDict(value="auto", label="Auto / Авто"),
+        selector.SelectOptionDict(value="switch", label="Switch / Выключатель"),
+        selector.SelectOptionDict(value="outlet", label="Outlet / Розетка"),
+        selector.SelectOptionDict(value="light", label="Light / Освещение"),
+        selector.SelectOptionDict(value="fan", label="Fan / Вентилятор"),
+        selector.SelectOptionDict(value="lock", label="Lock / Замок"),
+        selector.SelectOptionDict(value="valve", label="Valve / Клапан"),
+        selector.SelectOptionDict(value="garage", label="Garage / Ограждающее устройство"),
+        selector.SelectOptionDict(value="siren", label="Siren / Сирена"),
+        selector.SelectOptionDict(value="motion", label="Motion / Движение"),
+        selector.SelectOptionDict(value="opening", label="Opening / Открытие"),
+        selector.SelectOptionDict(value="problem", label="Problem / Проблема"),
+        selector.SelectOptionDict(value="moisture", label="Moisture / Протечка"),
+        selector.SelectOptionDict(value="connectivity", label="Connectivity / Связь"),
+        selector.SelectOptionDict(value="battery", label="Battery / Батарея"),
+        selector.SelectOptionDict(value="temperature", label="Temperature / Температура"),
+        selector.SelectOptionDict(value="humidity", label="Humidity / Влажность"),
+        selector.SelectOptionDict(value="power", label="Power / Мощность"),
+        selector.SelectOptionDict(value="energy", label="Energy / Энергия"),
+        selector.SelectOptionDict(value="voltage", label="Voltage / Напряжение"),
+        selector.SelectOptionDict(value="current", label="Current / Ток"),
+        selector.SelectOptionDict(value="illuminance", label="Illuminance / Освещенность"),
+        selector.SelectOptionDict(value="signal_strength", label="Signal strength / Сигнал"),
+    ]
+
+
 def _object_override_from_input(user_input: dict[str, Any]) -> dict[str, str]:
     override = {
         "name": str(user_input.get("object_name") or "").strip(),
-        "type": str(user_input.get("object_type") or "auto").strip(),
-        "device_class": str(user_input.get("object_device_class") or "").strip(),
+        "platform": str(user_input.get("object_platform") or "auto").strip(),
+        "device_class": str(user_input.get("object_type") or "auto").strip(),
         "icon": str(user_input.get("object_icon") or "").strip(),
     }
-    return {key: value for key, value in override.items() if value}
+    return {key: value for key, value in override.items() if value and value != "auto"}
 
 
 def _role_options(controls: dict[str, WBControl], empty_label: str) -> list[selector.SelectOptionDict]:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.7
+
+- Changed group object "type" to Home Assistant device class, with a separate entity platform selector.
+
 ## 0.9.6
 
 - Added per-object settings inside device groups: entity name, entity type, device class, and icon.
