@@ -91,6 +91,24 @@
           "expose_controls": "Оставить отдельными сущностями"
         }
       },
+      "add_group_objects": {
+        "title": "Объекты группы",
+        "description": "Выберите элемент, которому нужно задать имя, тип сущности, device class или иконку. Для завершения выберите \"Готово\".",
+        "data": {
+          "object_control": "Объект"
+        }
+      },
+      "add_group_object": {
+        "title": "Настройка объекта",
+        "description": "Задайте параметры сущности Home Assistant для выбранного элемента.",
+        "data": {
+          "object_name": "Имя объекта",
+          "object_type": "Тип объекта",
+          "object_device_class": "Device class",
+          "object_icon": "Иконка",
+          "remove_object": "Очистить настройку объекта"
+        }
+      },
       "edit_group": {
         "title": "Редактирование группы",
         "description": "Выберите группу, которую нужно изменить.",
@@ -123,6 +141,24 @@
           "mode_control": "Режим",
           "fan_control": "Вентилятор",
           "expose_controls": "Оставить отдельными сущностями"
+        }
+      },
+      "edit_group_objects": {
+        "title": "Объекты группы",
+        "description": "Выберите элемент, которому нужно задать имя, тип сущности, device class или иконку. Для завершения выберите \"Готово\".",
+        "data": {
+          "object_control": "Объект"
+        }
+      },
+      "edit_group_object": {
+        "title": "Настройка объекта",
+        "description": "Задайте параметры сущности Home Assistant для выбранного элемента.",
+        "data": {
+          "object_name": "Имя объекта",
+          "object_type": "Тип объекта",
+          "object_device_class": "Device class",
+          "object_icon": "Иконка",
+          "remove_object": "Очистить настройку объекта"
         }
       },
       "remove_group": {

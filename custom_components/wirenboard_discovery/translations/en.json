@@ -91,6 +91,24 @@
           "expose_controls": "Expose as separate entities"
         }
       },
+      "add_group_objects": {
+        "title": "Group objects",
+        "description": "Choose an item to set its entity name, entity type, device class, or icon. Choose \"Finish\" when done.",
+        "data": {
+          "object_control": "Object"
+        }
+      },
+      "add_group_object": {
+        "title": "Object settings",
+        "description": "Set Home Assistant entity options for the selected item.",
+        "data": {
+          "object_name": "Object name",
+          "object_type": "Object type",
+          "object_device_class": "Device class",
+          "object_icon": "Icon",
+          "remove_object": "Clear object settings"
+        }
+      },
       "edit_group": {
         "title": "Edit group",
         "description": "Choose the group you want to edit.",
@@ -123,6 +141,24 @@
           "mode_control": "Mode",
           "fan_control": "Fan",
           "expose_controls": "Expose as separate entities"
+        }
+      },
+      "edit_group_objects": {
+        "title": "Group objects",
+        "description": "Choose an item to set its entity name, entity type, device class, or icon. Choose \"Finish\" when done.",
+        "data": {
+          "object_control": "Object"
+        }
+      },
+      "edit_group_object": {
+        "title": "Object settings",
+        "description": "Set Home Assistant entity options for the selected item.",
+        "data": {
+          "object_name": "Object name",
+          "object_type": "Object type",
+          "object_device_class": "Device class",
+          "object_icon": "Icon",
+          "remove_object": "Clear object settings"
         }
       },
       "remove_group": {

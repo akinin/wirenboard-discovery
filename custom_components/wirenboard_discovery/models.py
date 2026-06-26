@@ -17,6 +17,10 @@ class WBControl:
     value: str | None = None
     ha_device_id: str | None = None
     ha_device_name: str | None = None
+    ha_entity_name: str | None = None
+    ha_platform: str | None = None
+    ha_device_class: str | None = None
+    ha_icon: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)
 
     @property

@@ -15,7 +15,8 @@ class WBEntity(Entity):
         self._control = control
         self._value = control.value
         self._attr_unique_id = control.unique_id
-        self._attr_name = control.control_name or control.control_id
+        self._attr_name = control.ha_entity_name or control.control_name or control.control_id
+        self._attr_icon = control.ha_icon or None
         device_identifier = control.ha_device_id or control.device_id
         device_name = control.ha_device_name or control.device_name or control.device_id
         self._attr_device_info = DeviceInfo(
@@ -30,3 +31,10 @@ class WBEntity(Entity):
     def _handle_value(self, value: str | None) -> None:
         self._value = value
         self.async_write_ha_state()
+
+
+def platform_override(control: WBControl) -> str | None:
+    platform = (control.ha_platform or "").strip()
+    if platform and platform != "auto":
+        return platform
+    return None

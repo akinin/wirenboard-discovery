@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.6
+
+- Added per-object settings inside device groups: entity name, entity type, device class, and icon.
+- Allowed object type overrides to move grouped controls between sensor, binary sensor, switch, button, number, and text platforms.
+
 ## 0.9.5
 
 - Returned configuration export/import to inline JSON text in the Home Assistant UI.
