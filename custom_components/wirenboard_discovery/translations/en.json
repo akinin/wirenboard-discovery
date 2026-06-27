@@ -26,7 +26,9 @@
       "no_devices_found": "No devices found. Check MQTT and the topic prefix."
     },
     "abort": {
-      "already_configured": "This controller is already configured."
+      "already_configured": "This controller is already configured.",
+      "cannot_connect": "The controller was found through Zeroconf, but MQTT did not respond.",
+      "not_wirenboard": "The discovered Zeroconf device does not look like a Wiren Board controller."
     }
   },
   "options": {

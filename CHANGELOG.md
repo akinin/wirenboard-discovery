@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.4
+
+- Added Zeroconf discovery for Wiren Board controllers announced as `wirenboard-*.local`.
+
 ## 0.9.3
 
 - Moved connection settings below diagnostics in the options menu.

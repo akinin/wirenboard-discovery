@@ -117,6 +117,42 @@ class WirenBoardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_zeroconf(self, discovery_info: Any):
+        if not _is_wirenboard_zeroconf(discovery_info):
+            return self.async_abort(reason="not_wirenboard")
+
+        host = _zeroconf_host(discovery_info)
+        unique_host = getattr(discovery_info, "host", None) or host
+        await self.async_set_unique_id(f"{unique_host}:{DEFAULT_PORT}")
+        self._abort_if_unique_id_configured()
+
+        self._connection_data = {
+            CONF_HOST: host,
+            CONF_PORT: DEFAULT_PORT,
+            CONF_USERNAME: "",
+            CONF_PASSWORD: "",
+            CONF_PREFIX: DEFAULT_PREFIX,
+            CONF_SHOW_SYSTEM_DEVICES: DEFAULT_SHOW_SYSTEM_DEVICES,
+        }
+        try:
+            self._controls = await self.hass.async_add_executor_job(
+                discover_controls,
+                host,
+                DEFAULT_PORT,
+                None,
+                None,
+                DEFAULT_PREFIX,
+            )
+        except WBDiscoveryError:
+            _LOGGER.exception("Cannot discover Zeroconf Wiren Board device")
+            return self.async_abort(reason="cannot_connect")
+
+        self.context["title_placeholders"] = {
+            "name": _zeroconf_name(discovery_info) or host,
+            "host": host,
+        }
+        return await self.async_step_pick_controls()
+
     async def async_step_pick_controls(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
             data = {
@@ -700,6 +736,32 @@ def control_to_dict(control: WBControl) -> dict[str, Any]:
 
 def control_from_dict(data: dict[str, Any]) -> WBControl:
     return WBControl(**data)
+
+
+def _is_wirenboard_zeroconf(discovery_info: Any) -> bool:
+    values = [
+        _zeroconf_name(discovery_info),
+        getattr(discovery_info, "hostname", None),
+        getattr(discovery_info, "server", None),
+    ]
+    return any(str(value or "").lower().startswith("wirenboard-") for value in values)
+
+
+def _zeroconf_host(discovery_info: Any) -> str:
+    hostname = getattr(discovery_info, "hostname", None)
+    if hostname:
+        return str(hostname).rstrip(".")
+    host = getattr(discovery_info, "host", None)
+    if host:
+        return str(host)
+    return _zeroconf_name(discovery_info) or DEFAULT_HOST
+
+
+def _zeroconf_name(discovery_info: Any) -> str | None:
+    name = getattr(discovery_info, "name", None)
+    if not name:
+        return None
+    return str(name).split("._", 1)[0].strip()
 
 
 def _slug(value: str) -> str:
