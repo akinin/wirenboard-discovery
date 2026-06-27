@@ -40,7 +40,7 @@
 
 `Настройки -> Устройства и службы -> Добавить интеграцию -> Wiren Board Discovery`
 
-<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration.png" />
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration.png" width="600" />
 
 ## Автообнаружение контроллера
 
@@ -48,16 +48,14 @@
 
 После появления карточки найденного контроллера нажмите `Настроить` и выберите элементы, которые нужно добавить в Home Assistant.
 
-> Место для скриншота: карточка Home Assistant с найденным контроллером Wiren Board.
->
-> Когда скриншот будет готов, добавьте файл `images/zeroconf_discovery.png` и вставьте его здесь.
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/autodiscover.png" width="600" />
 
 Если контроллер не появился автоматически, добавьте интеграцию вручную и укажите адрес контроллера.
 
 Введите параметры подключения.
 > Параметры подключения можно изменить позже через `Настроить -> Подключение`: адрес, порт, логин, пароль и префикс MQTT-топиков.
 
-<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/menu.png" width="400" /> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_2.png" width="400" />
+<img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_2.png" width="400" /> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/menu.png" width="400" />
 
 
 В процессе будет запрос на выбор элементов, для автоматической группировке по устройствам.
