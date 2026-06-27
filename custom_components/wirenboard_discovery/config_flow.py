@@ -169,7 +169,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
-                "connection",
                 "controls",
                 "add_group",
                 "edit_group",
@@ -177,6 +176,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 "export_config",
                 "import_config",
                 "diagnostics",
+                "connection",
             ],
         )
 

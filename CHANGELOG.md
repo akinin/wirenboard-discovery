@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3
+
+- Moved connection settings below diagnostics in the options menu.
+
 ## 0.9.0
 
 - Added configuration export and import.
