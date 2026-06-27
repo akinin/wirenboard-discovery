@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.10
+
+- Added real Home Assistant platforms for switch-like group object types: light, fan, lock, siren, and valve.
+- Cleaned stale entity registry entries when controls are removed or move to another Home Assistant platform.
+
 ## 0.9.9
 
 - Removed controls from Home Assistant when they are removed from a group and are not used by another group.

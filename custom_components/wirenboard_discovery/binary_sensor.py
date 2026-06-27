@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import WBEntity
+from .entity import WBEntity, platform_for_control
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_binary_sensor(control: WBControl) -> bool:
-    return control.control_type == "switch" and control.is_readonly
+    return platform_for_control(control) == "binary_sensor"
 
 
 class WBBinarySensor(WBEntity, BinarySensorEntity):

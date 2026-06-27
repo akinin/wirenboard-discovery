@@ -6,6 +6,14 @@ from .const import DOMAIN
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
+SWITCH_DEVICE_CLASS_PLATFORMS = {
+    "fan": "fan",
+    "light": "light",
+    "lock": "lock",
+    "siren": "siren",
+    "valve": "valve",
+}
+
 
 class WBEntity(Entity):
     _attr_has_entity_name = True
@@ -31,3 +39,31 @@ class WBEntity(Entity):
     def _handle_value(self, value: str | None) -> None:
         self._value = value
         self.async_write_ha_state()
+
+
+def platform_for_control(control: WBControl) -> str | None:
+    if control.control_type == "switch":
+        if control.is_readonly:
+            return "binary_sensor"
+        device_class = (control.ha_device_class or "").strip()
+        return SWITCH_DEVICE_CLASS_PLATFORMS.get(device_class, "switch")
+    if control.control_type == "pushbutton" and not control.is_readonly:
+        return "button"
+    if control.control_type == "text" and not control.is_readonly:
+        return "text"
+    if not control.is_readonly and (
+        control.control_type == "range"
+        or (control.control_type == "value" and _can_float(control.value))
+    ):
+        return "number"
+    if control.is_readonly:
+        return "sensor"
+    return None
+
+
+def _can_float(value: str | None) -> bool:
+    try:
+        float(value)
+    except (TypeError, ValueError):
+        return False
+    return True

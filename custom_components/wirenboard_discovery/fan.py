@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from homeassistant.components.text import TextEntity
+from homeassistant.components.fan import FanEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -17,20 +17,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     controls = data["controls"]
     hidden = data.get("hidden_controls", set())
     async_add_entities(
-        WBText(client, control)
+        WBFan(client, control)
         for control in controls.values()
-        if control.key not in hidden and _is_text(control)
+        if control.key not in hidden and platform_for_control(control) == "fan"
     )
 
 
-def _is_text(control: WBControl) -> bool:
-    return platform_for_control(control) == "text"
-
-
-class WBText(WBEntity, TextEntity):
+class WBFan(WBEntity, FanEntity):
     @property
-    def native_value(self) -> str | None:
-        return self._value
+    def is_on(self) -> bool | None:
+        return _is_on(self._value)
 
-    async def async_set_value(self, value: str) -> None:
-        self._client.publish_control(self._control, value)
+    async def async_turn_on(self, **kwargs) -> None:
+        self._client.publish_control(self._control, "1")
+
+    async def async_turn_off(self, **kwargs) -> None:
+        self._client.publish_control(self._control, "0")
+
+
+def _is_on(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    return str(value).strip().lower() in {"1", "true", "on"}
