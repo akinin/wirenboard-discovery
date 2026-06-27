@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.9
+
+- Removed controls from Home Assistant when they are removed from a group and are not used by another group.
+- Clearing a group object setting also removes that control from separately exposed composite entities.
+
 ## 0.9.8
 
 - Removed the group object entity platform field from the UI.

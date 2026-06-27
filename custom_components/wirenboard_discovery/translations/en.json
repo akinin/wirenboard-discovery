@@ -161,7 +161,7 @@
       },
       "remove_group": {
         "title": "Remove group",
-        "description": "Remove a grouping. Entities will stay selected and return to their original Wiren Board devices.",
+        "description": "Remove a grouping. Items from this group will also be removed from Home Assistant unless another group still uses them.",
         "data": {
           "group_id": "Group"
         }

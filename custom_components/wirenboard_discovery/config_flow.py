@@ -464,6 +464,9 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             objects = dict(group.get("objects") or {})
             if user_input.get("remove_object"):
                 objects.pop(self._pending_object_key, None)
+                expose_controls = set(group.get("expose_controls", []))
+                expose_controls.discard(self._pending_object_key)
+                group["expose_controls"] = sorted(expose_controls)
             else:
                 objects[self._pending_object_key] = _object_override_from_input(user_input)
                 if group.get("type") != TYPE_DEVICE:
@@ -499,13 +502,21 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 step_id="remove_group",
                 data_schema=vol.Schema({}),
                 errors={"base": "no_groups"},
-            )
+        )
 
         if user_input is not None:
-            groups.pop(user_input["group_id"], None)
+            group_id = user_input["group_id"]
+            old_group = groups.pop(group_id, {})
+            removed = set(str(key) for key in old_group.get("controls", []))
+            used_elsewhere = _controls_used_by_other_groups(groups, group_id)
+            selected = set(self._current_selected_controls())
+            selected.difference_update(removed - used_elsewhere)
             return self.async_create_entry(
                 title="",
-                data=self._options_with(device_groups=groups),
+                data=self._options_with(
+                    selected_controls=sorted(selected),
+                    device_groups=groups,
+                ),
             )
 
         schema = vol.Schema(
@@ -753,12 +764,19 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=self._options_with())
 
         groups = self._current_groups()
+        old_group = groups.get(self._pending_old_group_id or self._pending_group_id, {})
         if self._pending_old_group_id:
             groups.pop(self._pending_old_group_id, None)
-        groups[self._pending_group_id] = self._pending_group
+        pending_group = _clean_group_controls(self._pending_group)
+        groups[self._pending_group_id] = pending_group
 
-        selected = set(self._current_selected_controls())
-        selected.update(self._pending_group.get("controls", []))
+        selected = _selected_after_group_update(
+            current_selected=self._current_selected_controls(),
+            old_group=old_group,
+            new_group=pending_group,
+            groups=groups,
+            group_id=self._pending_group_id,
+        )
         self._clear_pending_group()
         self._edit_group_id = None
         return self.async_create_entry(
@@ -870,6 +888,56 @@ def _control_label(key: str, control: WBControl, membership: dict[str, str]) -> 
     if key in membership:
         label = f"{label} [{membership[key]}]"
     return label
+
+
+def _clean_group_controls(group: dict[str, Any]) -> dict[str, Any]:
+    controls = {str(key) for key in group.get("controls", [])}
+    cleaned = dict(group)
+    cleaned["expose_controls"] = [
+        key for key in group.get("expose_controls", [])
+        if str(key) in controls
+    ]
+    cleaned["objects"] = {
+        str(key): value
+        for key, value in (group.get("objects") or {}).items()
+        if str(key) in controls
+    }
+    cleaned["roles"] = {
+        role: key
+        for role, key in (group.get("roles") or {}).items()
+        if str(key) in controls
+    }
+    return cleaned
+
+
+def _selected_after_group_update(
+    current_selected: list[str],
+    old_group: dict[str, Any],
+    new_group: dict[str, Any],
+    groups: dict[str, dict[str, Any]],
+    group_id: str,
+) -> list[str]:
+    selected = set(current_selected)
+    old_controls = {str(key) for key in old_group.get("controls", [])}
+    new_controls = {str(key) for key in new_group.get("controls", [])}
+    removed_controls = old_controls - new_controls
+    used_elsewhere = _controls_used_by_other_groups(groups, group_id)
+
+    selected.difference_update(removed_controls - used_elsewhere)
+    selected.update(new_controls)
+    return sorted(selected)
+
+
+def _controls_used_by_other_groups(
+    groups: dict[str, dict[str, Any]],
+    group_id: str,
+) -> set[str]:
+    used: set[str] = set()
+    for current_group_id, group in groups.items():
+        if current_group_id == group_id:
+            continue
+        used.update(str(key) for key in group.get("controls", []))
+    return used
 
 
 def _group_type_options() -> list[selector.SelectOptionDict]:
