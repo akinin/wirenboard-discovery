@@ -100,10 +100,9 @@
       },
       "add_group_object": {
         "title": "Настройка объекта",
-        "description": "Задайте параметры сущности Home Assistant для выбранного элемента.",
+        "description": "Задайте имя, тип и иконку объекта Home Assistant для выбранного элемента.",
         "data": {
           "object_name": "Имя объекта",
-          "object_platform": "Сущность Home Assistant",
           "object_type": "Тип объекта",
           "object_icon": "Иконка",
           "remove_object": "Очистить настройку объекта"
@@ -152,10 +151,9 @@
       },
       "edit_group_object": {
         "title": "Настройка объекта",
-        "description": "Задайте параметры сущности Home Assistant для выбранного элемента.",
+        "description": "Задайте имя, тип и иконку объекта Home Assistant для выбранного элемента.",
         "data": {
           "object_name": "Имя объекта",
-          "object_platform": "Сущность Home Assistant",
           "object_type": "Тип объекта",
           "object_icon": "Иконка",
           "remove_object": "Очистить настройку объекта"

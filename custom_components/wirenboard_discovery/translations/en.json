@@ -100,10 +100,9 @@
       },
       "add_group_object": {
         "title": "Object settings",
-        "description": "Set Home Assistant entity options for the selected item.",
+        "description": "Set the Home Assistant object name, type, and icon for the selected item.",
         "data": {
           "object_name": "Object name",
-          "object_platform": "Home Assistant entity",
           "object_type": "Object type",
           "object_icon": "Icon",
           "remove_object": "Clear object settings"
@@ -152,10 +151,9 @@
       },
       "edit_group_object": {
         "title": "Object settings",
-        "description": "Set Home Assistant entity options for the selected item.",
+        "description": "Set the Home Assistant object name, type, and icon for the selected item.",
         "data": {
           "object_name": "Object name",
-          "object_platform": "Home Assistant entity",
           "object_type": "Object type",
           "object_icon": "Icon",
           "remove_object": "Clear object settings"

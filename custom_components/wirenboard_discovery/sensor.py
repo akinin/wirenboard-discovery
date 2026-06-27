@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import WBEntity, platform_override
+from .entity import WBEntity
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
@@ -24,9 +24,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_sensor(control: WBControl) -> bool:
-    platform = platform_override(control)
-    if platform is not None:
-        return platform == "sensor"
     return control.control_type not in {"switch", "range"} and control.is_readonly
 
 

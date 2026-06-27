@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.8
+
+- Removed the group object entity platform field from the UI.
+- Group object type now only controls Home Assistant device class.
+
 ## 0.9.7
 
 - Changed group object "type" to Home Assistant device class, with a separate entity platform selector.

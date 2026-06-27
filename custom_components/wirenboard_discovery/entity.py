@@ -31,10 +31,3 @@ class WBEntity(Entity):
     def _handle_value(self, value: str | None) -> None:
         self._value = value
         self.async_write_ha_state()
-
-
-def platform_override(control: WBControl) -> str | None:
-    platform = (control.ha_platform or "").strip()
-    if platform and platform != "auto":
-        return platform
-    return None

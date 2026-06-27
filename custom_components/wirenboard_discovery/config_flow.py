@@ -483,10 +483,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                     default=override.get("name") or control.control_name or control.control_id,
                 ): str,
                 vol.Required(
-                    "object_platform",
-                    default=override.get("platform") or override.get("type") or _auto_object_platform(control),
-                ): selector.SelectSelector(selector.SelectSelectorConfig(options=_object_platform_options())),
-                vol.Required(
                     "object_type",
                     default=override.get("device_class") or "auto",
                 ): selector.SelectSelector(selector.SelectSelectorConfig(options=_object_device_class_options())),
@@ -886,39 +882,12 @@ def _group_type_options() -> list[selector.SelectOptionDict]:
     ]
 
 
-def _object_platform_options() -> list[selector.SelectOptionDict]:
-    return [
-        selector.SelectOptionDict(value="auto", label="Auto / Авто"),
-        selector.SelectOptionDict(value="sensor", label="Sensor / Датчик"),
-        selector.SelectOptionDict(value="binary_sensor", label="Binary sensor / Бинарный датчик"),
-        selector.SelectOptionDict(value="switch", label="Switch / Переключатель"),
-        selector.SelectOptionDict(value="button", label="Button / Кнопка"),
-        selector.SelectOptionDict(value="number", label="Number / Число"),
-        selector.SelectOptionDict(value="text", label="Text / Текст"),
-    ]
-
-
 def _group_controls(controls: dict[str, WBControl], group: dict[str, Any]) -> dict[str, WBControl]:
     return {
         key: controls[key]
         for key in group.get("controls", [])
         if key in controls
     }
-
-
-def _auto_object_platform(control: WBControl) -> str:
-    if control.control_type == "switch":
-        return "binary_sensor" if control.is_readonly else "switch"
-    if control.control_type == "pushbutton" and not control.is_readonly:
-        return "button"
-    if control.control_type == "text" and not control.is_readonly:
-        return "text"
-    if not control.is_readonly and (
-        control.control_type == "range"
-        or (control.control_type == "value" and _can_float_value(control.value))
-    ):
-        return "number"
-    return "sensor"
 
 
 def _object_device_class_options() -> list[selector.SelectOptionDict]:
@@ -952,7 +921,6 @@ def _object_device_class_options() -> list[selector.SelectOptionDict]:
 def _object_override_from_input(user_input: dict[str, Any]) -> dict[str, str]:
     override = {
         "name": str(user_input.get("object_name") or "").strip(),
-        "platform": str(user_input.get("object_platform") or "auto").strip(),
         "device_class": str(user_input.get("object_type") or "auto").strip(),
         "icon": str(user_input.get("object_icon") or "").strip(),
     }
@@ -1025,11 +993,3 @@ def _roles_from_input(user_input: dict[str, Any]) -> dict[str, str]:
         for field, role in ROLE_FIELDS.items()
         if user_input.get(field)
     }
-
-
-def _can_float_value(value: str | None) -> bool:
-    try:
-        float(value)
-    except (TypeError, ValueError):
-        return False
-    return True
