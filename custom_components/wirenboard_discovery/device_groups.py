@@ -28,14 +28,12 @@ def apply_device_groups(
     for group_id, group in config.items():
         name = group.get("name") or group_id
         patterns = group.get("controls") or []
-        objects = group.get("objects") or {}
         if isinstance(patterns, str):
             patterns = [patterns]
         for key, control in controls.items():
             if _matches_any(key, patterns):
                 control.ha_device_id = f"group:{group_id}"
                 control.ha_device_name = str(name)
-                _apply_object_override(control, objects.get(key) or objects.get(control.control_id))
 
 
 def _load_groups_config(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
@@ -73,14 +71,3 @@ def _load_groups_config(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
 
 def _matches_any(key: str, patterns: list[str]) -> bool:
     return any(key == pattern or fnmatch.fnmatchcase(key, pattern) for pattern in patterns)
-
-
-def _apply_object_override(control: WBControl, override: object) -> None:
-    if not isinstance(override, dict):
-        return
-    if override.get("name"):
-        control.ha_entity_name = str(override["name"])
-    if override.get("device_class"):
-        control.ha_device_class = str(override["device_class"])
-    if override.get("icon"):
-        control.ha_icon = str(override["icon"])

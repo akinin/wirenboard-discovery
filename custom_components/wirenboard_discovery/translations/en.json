@@ -36,13 +36,13 @@
         "description": "Choose an action.",
         "menu_options": {
           "controls": "Select items",
+          "connection": "Connection",
           "add_group": "Add or update group",
           "edit_group": "Edit group",
           "remove_group": "Remove group",
           "export_config": "Export configuration",
           "import_config": "Import configuration",
-          "diagnostics": "Diagnostics",
-          "connection": "Connection"
+          "diagnostics": "Diagnostics"
         }
       },
       "controls": {
@@ -91,23 +91,6 @@
           "expose_controls": "Expose as separate entities"
         }
       },
-      "add_group_objects": {
-        "title": "Group objects",
-        "description": "Choose an item to set its entity name, entity type, device class, or icon. Choose \"Finish\" when done.",
-        "data": {
-          "object_control": "Object"
-        }
-      },
-      "add_group_object": {
-        "title": "Object settings",
-        "description": "Set the Home Assistant object name, type, and icon for the selected item.",
-        "data": {
-          "object_name": "Object name",
-          "object_type": "Object type",
-          "object_icon": "Icon",
-          "remove_object": "Clear object settings"
-        }
-      },
       "edit_group": {
         "title": "Edit group",
         "description": "Choose the group you want to edit.",
@@ -142,46 +125,25 @@
           "expose_controls": "Expose as separate entities"
         }
       },
-      "edit_group_objects": {
-        "title": "Group objects",
-        "description": "Choose an item to set its entity name, entity type, device class, or icon. Choose \"Finish\" when done.",
-        "data": {
-          "object_control": "Object"
-        }
-      },
-      "edit_group_object": {
-        "title": "Object settings",
-        "description": "Set the Home Assistant object name, type, and icon for the selected item.",
-        "data": {
-          "object_name": "Object name",
-          "object_type": "Object type",
-          "object_icon": "Icon",
-          "remove_object": "Clear object settings"
-        }
-      },
       "remove_group": {
         "title": "Remove group",
-        "description": "Remove a grouping. Items from this group will also be removed from Home Assistant unless another group still uses them.",
+        "description": "Remove a grouping. Entities will stay selected and return to their original Wiren Board devices.",
         "data": {
           "group_id": "Group"
         }
       },
       "export_config": {
         "title": "Export configuration",
-        "description": "Copy the JSON below and keep it somewhere safe. It contains connection settings, selected items, groups, roles, and stored item metadata.",
+        "description": "Copy the JSON below. It contains connection settings, selected items, groups, roles, and stored item metadata.",
         "data": {
-          "export_json": "Configuration"
+          "export_data": "JSON"
         }
-      },
-      "export_config_done": {
-        "title": "Export configuration",
-        "description": "Configuration is ready."
       },
       "import_config": {
         "title": "Import configuration",
         "description": "Paste JSON created by the export screen. The integration will reload after saving.",
         "data": {
-          "import_json": "Configuration"
+          "import_data": "JSON"
         }
       },
       "diagnostics": {
@@ -194,8 +156,6 @@
       "required": "Fill in this field.",
       "already_exists": "A group with this ID already exists.",
       "invalid_import": "Could not read import JSON.",
-      "cannot_write_file": "Could not write export file.",
-      "cannot_read_file": "Could not read import file.",
       "no_groups": "No groups have been created yet."
     }
   }

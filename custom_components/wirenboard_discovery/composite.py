@@ -25,7 +25,6 @@ def normalize_groups(groups: dict[str, dict[str, Any]]) -> dict[str, dict[str, A
         group.setdefault("type", default_group_type(group_id, group))
         group.setdefault("icon", "")
         group.setdefault("roles", {})
-        group.setdefault("objects", {})
         normalized[str(group_id)] = group
     return normalized
 

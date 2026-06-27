@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import WBEntity, platform_for_control
+from .entity import WBEntity
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_button(control: WBControl) -> bool:
-    return platform_for_control(control) == "button"
+    return control.control_type == "pushbutton" and not control.is_readonly
 
 
 class WBButton(WBEntity, ButtonEntity):

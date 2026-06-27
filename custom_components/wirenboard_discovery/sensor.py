@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import WBEntity, platform_for_control
+from .entity import WBEntity
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
@@ -24,14 +24,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_sensor(control: WBControl) -> bool:
-    return platform_for_control(control) == "sensor"
+    return control.control_type not in {"switch", "range"} and control.is_readonly
 
 
 class WBSensor(WBEntity, SensorEntity):
     def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
         metadata = _sensor_metadata(control)
-        self._attr_device_class = control.ha_device_class or metadata.get("device_class")
+        self._attr_device_class = metadata.get("device_class")
         self._attr_state_class = metadata.get("state_class")
         self._attr_native_unit_of_measurement = metadata.get("unit")
 

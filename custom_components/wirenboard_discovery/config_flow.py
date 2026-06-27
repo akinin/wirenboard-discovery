@@ -164,12 +164,12 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         self._pending_group_id: str | None = None
         self._pending_group: dict[str, Any] | None = None
         self._pending_old_group_id: str | None = None
-        self._pending_object_key: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
+                "connection",
                 "controls",
                 "add_group",
                 "edit_group",
@@ -177,7 +177,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 "export_config",
                 "import_config",
                 "diagnostics",
-                "connection",
             ],
         )
 
@@ -260,14 +259,21 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                     "icon": user_input.get("group_icon") or "",
                     "roles": {},
                     "expose_controls": [],
-                    "objects": {},
                 }
-                self._pending_group_id = group_id
-                self._pending_group = groups[group_id]
-                self._pending_old_group_id = None
+                selected = set(self._current_selected_controls())
+                selected.update(user_input["group_controls"])
                 if user_input["group_type"] != TYPE_DEVICE:
+                    self._pending_group_id = group_id
+                    self._pending_group = groups[group_id]
+                    self._pending_old_group_id = None
                     return await self.async_step_add_group_roles()
-                return await self.async_step_add_group_objects()
+                return self.async_create_entry(
+                    title="",
+                    data=self._options_with(
+                        selected_controls=sorted(selected),
+                        device_groups=groups,
+                    ),
+                )
 
         schema = vol.Schema(
             {
@@ -294,11 +300,21 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_add_group()
 
         if user_input is not None:
+            groups = self._current_groups()
             group = dict(self._pending_group)
             group["roles"] = _roles_from_input(user_input)
             group["expose_controls"] = user_input.get("expose_controls", [])
-            self._pending_group = group
-            return await self.async_step_add_group_objects()
+            groups[self._pending_group_id] = group
+            selected = set(self._current_selected_controls())
+            selected.update(group["controls"])
+            self._clear_pending_group()
+            return self.async_create_entry(
+                title="",
+                data=self._options_with(
+                    selected_controls=sorted(selected),
+                    device_groups=groups,
+                ),
+            )
 
         schema = _role_schema(self._controls, self._pending_group)
         return self.async_show_form(step_id="add_group_roles", data_schema=schema, errors=errors)
@@ -354,14 +370,23 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                         "icon": user_input.get("group_icon") or "",
                         "roles": group.get("roles", {}),
                         "expose_controls": group.get("expose_controls", []),
-                        "objects": group.get("objects", {}),
                     }
-                    self._pending_old_group_id = group_id
-                    self._pending_group_id = new_group_id
-                    self._pending_group = group_data
+                    selected = set(self._current_selected_controls())
+                    selected.update(user_input["group_controls"])
                     if user_input["group_type"] != TYPE_DEVICE:
+                        self._pending_old_group_id = group_id
+                        self._pending_group_id = new_group_id
+                        self._pending_group = group_data
                         return await self.async_step_edit_group_roles()
-                    return await self.async_step_edit_group_objects()
+                    groups[new_group_id] = group_data
+                    self._edit_group_id = None
+                    return self.async_create_entry(
+                        title="",
+                        data=self._options_with(
+                            selected_controls=sorted(selected),
+                            device_groups=groups,
+                        ),
+                    )
 
         schema = vol.Schema(
             {
@@ -388,112 +413,27 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_edit_group()
 
         if user_input is not None:
+            groups = self._current_groups()
+            if self._pending_old_group_id:
+                groups.pop(self._pending_old_group_id, None)
             group = dict(self._pending_group)
             group["roles"] = _roles_from_input(user_input)
             group["expose_controls"] = user_input.get("expose_controls", [])
-            self._pending_group = group
-            return await self.async_step_edit_group_objects()
+            groups[self._pending_group_id] = group
+            selected = set(self._current_selected_controls())
+            selected.update(group["controls"])
+            self._clear_pending_group()
+            self._edit_group_id = None
+            return self.async_create_entry(
+                title="",
+                data=self._options_with(
+                    selected_controls=sorted(selected),
+                    device_groups=groups,
+                ),
+            )
 
         schema = _role_schema(self._controls, self._pending_group)
         return self.async_show_form(step_id="edit_group_roles", data_schema=schema, errors=errors)
-
-    async def async_step_add_group_objects(self, user_input: dict[str, Any] | None = None):
-        return await self._async_step_group_objects("add_group_objects", "add_group_object", user_input)
-
-    async def async_step_add_group_object(self, user_input: dict[str, Any] | None = None):
-        return await self._async_step_group_object(user_input, "add_group_objects", "add_group_object")
-
-    async def async_step_edit_group_objects(self, user_input: dict[str, Any] | None = None):
-        return await self._async_step_group_objects("edit_group_objects", "edit_group_object", user_input)
-
-    async def async_step_edit_group_object(self, user_input: dict[str, Any] | None = None):
-        return await self._async_step_group_object(user_input, "edit_group_objects", "edit_group_object")
-
-    async def _async_step_group_objects(
-        self,
-        step_id: str,
-        object_step_id: str,
-        user_input: dict[str, Any] | None = None,
-    ):
-        errors: dict[str, str] = {}
-        errors.update(await self._async_load_controls())
-        if not self._pending_group_id or not self._pending_group:
-            return await self.async_step_init()
-
-        if user_input is not None:
-            if user_input["object_control"] == "__finish__":
-                return self._create_group_entry()
-            self._pending_object_key = user_input["object_control"]
-            return await getattr(self, f"async_step_{object_step_id}")()
-
-        group_controls = _group_controls(self._controls, self._pending_group)
-        options = [
-            selector.SelectOptionDict(value="__finish__", label="Finish / Готово"),
-            *_select_options(group_controls or self._controls),
-        ]
-        return self.async_show_form(
-            step_id=step_id,
-            data_schema=vol.Schema(
-                {
-                    vol.Required("object_control", default="__finish__"): selector.SelectSelector(
-                        selector.SelectSelectorConfig(options=options)
-                    ),
-                }
-            ),
-            errors=errors,
-        )
-
-    async def _async_step_group_object(
-        self,
-        user_input: dict[str, Any] | None,
-        list_step_id: str,
-        step_id: str,
-    ):
-        errors: dict[str, str] = {}
-        errors.update(await self._async_load_controls())
-        if not self._pending_group_id or not self._pending_group or not self._pending_object_key:
-            return await getattr(self, f"async_step_{list_step_id}")()
-
-        control = self._controls.get(self._pending_object_key)
-        if control is None:
-            errors["base"] = "required"
-            return await getattr(self, f"async_step_{list_step_id}")()
-
-        if user_input is not None:
-            group = dict(self._pending_group)
-            objects = dict(group.get("objects") or {})
-            if user_input.get("remove_object"):
-                objects.pop(self._pending_object_key, None)
-                expose_controls = set(group.get("expose_controls", []))
-                expose_controls.discard(self._pending_object_key)
-                group["expose_controls"] = sorted(expose_controls)
-            else:
-                objects[self._pending_object_key] = _object_override_from_input(user_input)
-                if group.get("type") != TYPE_DEVICE:
-                    expose_controls = set(group.get("expose_controls", []))
-                    expose_controls.add(self._pending_object_key)
-                    group["expose_controls"] = sorted(expose_controls)
-            group["objects"] = objects
-            self._pending_group = group
-            self._pending_object_key = None
-            return await getattr(self, f"async_step_{list_step_id}")()
-
-        override = (self._pending_group.get("objects") or {}).get(self._pending_object_key, {})
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    "object_name",
-                    default=override.get("name") or control.control_name or control.control_id,
-                ): str,
-                vol.Required(
-                    "object_type",
-                    default=override.get("device_class") or "auto",
-                ): selector.SelectSelector(selector.SelectSelectorConfig(options=_object_device_class_options())),
-                vol.Optional("object_icon", default=override.get("icon") or ""): str,
-                vol.Optional("remove_object", default=False): bool,
-            }
-        )
-        return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
 
     async def async_step_remove_group(self, user_input: dict[str, Any] | None = None):
         groups = self._current_groups()
@@ -502,21 +442,13 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 step_id="remove_group",
                 data_schema=vol.Schema({}),
                 errors={"base": "no_groups"},
-        )
+            )
 
         if user_input is not None:
-            group_id = user_input["group_id"]
-            old_group = groups.pop(group_id, {})
-            removed = set(str(key) for key in old_group.get("controls", []))
-            used_elsewhere = _controls_used_by_other_groups(groups, group_id)
-            selected = set(self._current_selected_controls())
-            selected.difference_update(removed - used_elsewhere)
+            groups.pop(user_input["group_id"], None)
             return self.async_create_entry(
                 title="",
-                data=self._options_with(
-                    selected_controls=sorted(selected),
-                    device_groups=groups,
-                ),
+                data=self._options_with(device_groups=groups),
             )
 
         schema = vol.Schema(
@@ -529,17 +461,12 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="remove_group", data_schema=schema)
 
     async def async_step_export_config(self, user_input: dict[str, Any] | None = None):
-        if user_input is not None:
-            return self.async_create_entry(title="", data=self._options_with())
-
-        export_json = self._export_json()
+        export_data = json.dumps(self._export_payload(), ensure_ascii=False, sort_keys=True)
         return self.async_show_form(
             step_id="export_config",
             data_schema=vol.Schema(
                 {
-                    vol.Optional("export_json", default=export_json): selector.TextSelector(
-                        selector.TextSelectorConfig(multiline=True)
-                    ),
+                    vol.Optional("export_data", default=export_data): str,
                 }
             ),
         )
@@ -548,22 +475,16 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                payload = json.loads(user_input["import_json"])
+                payload = json.loads(user_input["import_data"])
                 options = self._options_from_import(payload)
-            except (json.JSONDecodeError, TypeError, ValueError, KeyError):
+            except (TypeError, ValueError, KeyError):
                 errors["base"] = "invalid_import"
             else:
                 return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
             step_id="import_config",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("import_json", default=""): selector.TextSelector(
-                        selector.TextSelectorConfig(multiline=True)
-                    ),
-                }
-            ),
+            data_schema=vol.Schema({vol.Required("import_data"): str}),
             errors=errors,
         )
 
@@ -651,7 +572,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             group.setdefault("icon", "")
             group.setdefault("roles", {})
             group.setdefault("expose_controls", [])
-            group.setdefault("objects", {})
             groups[key] = group
         return groups
 
@@ -731,9 +651,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             ),
         }
 
-    def _export_json(self) -> str:
-        return json.dumps(self._export_payload(), ensure_ascii=False, indent=2, sort_keys=True)
-
     def _options_from_import(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(payload, dict):
             raise ValueError("import payload must be an object")
@@ -759,39 +676,10 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_PREFIX: str(connection.get(CONF_PREFIX, self._current_connection()[CONF_PREFIX])),
         }
 
-    def _create_group_entry(self):
-        if not self._pending_group_id or not self._pending_group:
-            return self.async_create_entry(title="", data=self._options_with())
-
-        groups = self._current_groups()
-        old_group = groups.get(self._pending_old_group_id or self._pending_group_id, {})
-        if self._pending_old_group_id:
-            groups.pop(self._pending_old_group_id, None)
-        pending_group = _clean_group_controls(self._pending_group)
-        groups[self._pending_group_id] = pending_group
-
-        selected = _selected_after_group_update(
-            current_selected=self._current_selected_controls(),
-            old_group=old_group,
-            new_group=pending_group,
-            groups=groups,
-            group_id=self._pending_group_id,
-        )
-        self._clear_pending_group()
-        self._edit_group_id = None
-        return self.async_create_entry(
-            title="",
-            data=self._options_with(
-                selected_controls=sorted(selected),
-                device_groups=groups,
-            ),
-        )
-
     def _clear_pending_group(self) -> None:
         self._pending_group_id = None
         self._pending_group = None
         self._pending_old_group_id = None
-        self._pending_object_key = None
 
 
 def control_to_dict(control: WBControl) -> dict[str, Any]:
@@ -806,10 +694,6 @@ def control_to_dict(control: WBControl) -> dict[str, Any]:
         "value": control.value,
         "ha_device_id": control.ha_device_id,
         "ha_device_name": control.ha_device_name,
-        "ha_entity_name": control.ha_entity_name,
-        "ha_platform": control.ha_platform,
-        "ha_device_class": control.ha_device_class,
-        "ha_icon": control.ha_icon,
         "meta": control.meta,
     }
 
@@ -890,56 +774,6 @@ def _control_label(key: str, control: WBControl, membership: dict[str, str]) -> 
     return label
 
 
-def _clean_group_controls(group: dict[str, Any]) -> dict[str, Any]:
-    controls = {str(key) for key in group.get("controls", [])}
-    cleaned = dict(group)
-    cleaned["expose_controls"] = [
-        key for key in group.get("expose_controls", [])
-        if str(key) in controls
-    ]
-    cleaned["objects"] = {
-        str(key): value
-        for key, value in (group.get("objects") or {}).items()
-        if str(key) in controls
-    }
-    cleaned["roles"] = {
-        role: key
-        for role, key in (group.get("roles") or {}).items()
-        if str(key) in controls
-    }
-    return cleaned
-
-
-def _selected_after_group_update(
-    current_selected: list[str],
-    old_group: dict[str, Any],
-    new_group: dict[str, Any],
-    groups: dict[str, dict[str, Any]],
-    group_id: str,
-) -> list[str]:
-    selected = set(current_selected)
-    old_controls = {str(key) for key in old_group.get("controls", [])}
-    new_controls = {str(key) for key in new_group.get("controls", [])}
-    removed_controls = old_controls - new_controls
-    used_elsewhere = _controls_used_by_other_groups(groups, group_id)
-
-    selected.difference_update(removed_controls - used_elsewhere)
-    selected.update(new_controls)
-    return sorted(selected)
-
-
-def _controls_used_by_other_groups(
-    groups: dict[str, dict[str, Any]],
-    group_id: str,
-) -> set[str]:
-    used: set[str] = set()
-    for current_group_id, group in groups.items():
-        if current_group_id == group_id:
-            continue
-        used.update(str(key) for key in group.get("controls", []))
-    return used
-
-
 def _group_type_options() -> list[selector.SelectOptionDict]:
     return [
         selector.SelectOptionDict(value=TYPE_DEVICE, label="Device / Обычное устройство"),
@@ -948,51 +782,6 @@ def _group_type_options() -> list[selector.SelectOptionDict]:
         selector.SelectOptionDict(value=TYPE_THERMOSTAT, label="Thermostat / Термостат"),
         selector.SelectOptionDict(value=TYPE_AC, label="AC / Кондиционер"),
     ]
-
-
-def _group_controls(controls: dict[str, WBControl], group: dict[str, Any]) -> dict[str, WBControl]:
-    return {
-        key: controls[key]
-        for key in group.get("controls", [])
-        if key in controls
-    }
-
-
-def _object_device_class_options() -> list[selector.SelectOptionDict]:
-    return [
-        selector.SelectOptionDict(value="auto", label="Auto / Авто"),
-        selector.SelectOptionDict(value="switch", label="Switch / Выключатель"),
-        selector.SelectOptionDict(value="outlet", label="Outlet / Розетка"),
-        selector.SelectOptionDict(value="light", label="Light / Освещение"),
-        selector.SelectOptionDict(value="fan", label="Fan / Вентилятор"),
-        selector.SelectOptionDict(value="lock", label="Lock / Замок"),
-        selector.SelectOptionDict(value="valve", label="Valve / Клапан"),
-        selector.SelectOptionDict(value="garage", label="Garage / Ограждающее устройство"),
-        selector.SelectOptionDict(value="siren", label="Siren / Сирена"),
-        selector.SelectOptionDict(value="motion", label="Motion / Движение"),
-        selector.SelectOptionDict(value="opening", label="Opening / Открытие"),
-        selector.SelectOptionDict(value="problem", label="Problem / Проблема"),
-        selector.SelectOptionDict(value="moisture", label="Moisture / Протечка"),
-        selector.SelectOptionDict(value="connectivity", label="Connectivity / Связь"),
-        selector.SelectOptionDict(value="battery", label="Battery / Батарея"),
-        selector.SelectOptionDict(value="temperature", label="Temperature / Температура"),
-        selector.SelectOptionDict(value="humidity", label="Humidity / Влажность"),
-        selector.SelectOptionDict(value="power", label="Power / Мощность"),
-        selector.SelectOptionDict(value="energy", label="Energy / Энергия"),
-        selector.SelectOptionDict(value="voltage", label="Voltage / Напряжение"),
-        selector.SelectOptionDict(value="current", label="Current / Ток"),
-        selector.SelectOptionDict(value="illuminance", label="Illuminance / Освещенность"),
-        selector.SelectOptionDict(value="signal_strength", label="Signal strength / Сигнал"),
-    ]
-
-
-def _object_override_from_input(user_input: dict[str, Any]) -> dict[str, str]:
-    override = {
-        "name": str(user_input.get("object_name") or "").strip(),
-        "device_class": str(user_input.get("object_type") or "auto").strip(),
-        "icon": str(user_input.get("object_icon") or "").strip(),
-    }
-    return {key: value for key, value in override.items() if value and value != "auto"}
 
 
 def _role_options(controls: dict[str, WBControl], empty_label: str) -> list[selector.SelectOptionDict]:

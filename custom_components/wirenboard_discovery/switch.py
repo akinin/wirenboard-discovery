@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import WBEntity, platform_for_control
+from .entity import WBEntity
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
@@ -24,14 +24,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_switch(control: WBControl) -> bool:
-    return platform_for_control(control) == "switch"
+    return control.control_type == "switch" and not control.is_readonly
 
 
 class WBSwitch(WBEntity, SwitchEntity):
-    def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
-        super().__init__(client, control)
-        self._attr_device_class = control.ha_device_class or None
-
     @property
     def is_on(self) -> bool | None:
         if self._value is None:

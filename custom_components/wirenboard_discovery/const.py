@@ -12,20 +12,6 @@ DEFAULT_PORT = 1883
 DEFAULT_PREFIX = "/"
 DEFAULT_SHOW_SYSTEM_DEVICES = False
 
-PLATFORMS = [
-    "binary_sensor",
-    "button",
-    "climate",
-    "cover",
-    "fan",
-    "light",
-    "lock",
-    "number",
-    "sensor",
-    "siren",
-    "switch",
-    "text",
-    "valve",
-]
+PLATFORMS = ["binary_sensor", "button", "climate", "cover", "number", "sensor", "switch", "text"]
 
 DISCOVERY_SECONDS = 4

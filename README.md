@@ -1,6 +1,3 @@
-[![GitHub Release](https://img.shields.io/github/v/release/akinin/wirenboard-discovery?style=for-the-badge&color=%23A349A4)](https://github.com/akinin/wirenboard-discovery)
-[![Поддержать проект](https://img.shields.io/badge/Поддержать%20проект-spasibomir.ru-2ea44f?style=for-the-badge)](https://spasibomir.ru/pay/22699)
-
 # Wiren Board Discovery for Home Assistant (unofficial)
 
 > Данная интеграция не является официальной, не поддерживается и не аффилирована с компанией Wiren Board.
@@ -78,7 +75,7 @@
 
 ## Экспорт / импорт конфигурации интеграции
 
-Конфигурацию можно перенести между установками через `Настроить -> Экспорт конфигурации` и `Настроить -> Импорт конфигурации`. Экспорт сохраняет JSON-файл в `/config`, импорт читает JSON-файл из `/config`.
+Конфигурацию можно перенести между установками через `Настроить -> Экспорт конфигурации` и `Настроить -> Импорт конфигурации`.
 
 ---
 Также можно использовать файл `/config/wirenboard_discovery.yaml`:
