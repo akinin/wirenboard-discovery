@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.4
+
+- Reset the Wiren Board SMS command to whitespace after it has been accepted, allowing identical consecutive messages to trigger `whenChanged` reliably.
+- Keep SMS sends serialized until the command reset is complete.
+
 ## 0.10.3
 
 - Serialized SMS action calls per Wiren Board connection.

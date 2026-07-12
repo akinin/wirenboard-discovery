@@ -52,10 +52,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         client: WBRuntimeClient = runtime["client"]
         async with runtime["sms_lock"]:
             client.publish_control_by_id("sms_sender", "send", f"{phone};{message}")
-            # wb-rules clears sms_sender/send after accepting the command. Keep
-            # this action open briefly so a following identical call cannot be
-            # published before the control has returned to an empty value.
-            await asyncio.sleep(0.5)
+            # wb-rules remembers the last value received on the command topic.
+            # Clearing only the regular state topic from send_sms.js therefore
+            # does not make an identical next command a change. Give the rule
+            # time to accept the SMS, then reset the command topic to whitespace.
+            # The rule trims and ignores that value, while wb-rules records it.
+            await asyncio.sleep(1.0)
+            client.publish_control_by_id("sms_sender", "send", " ")
+            await asyncio.sleep(0.2)
 
     hass.services.async_register(
         DOMAIN,
