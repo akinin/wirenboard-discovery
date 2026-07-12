@@ -16,8 +16,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     client = data["client"]
     controls = data["controls"]
     hidden = data.get("hidden_controls", set())
+    configured_classes = data.get("sensor_device_classes", {})
     async_add_entities(
-        WBSensor(client, control)
+        WBSensor(client, control, configured_classes.get(control.key))
         for control in controls.values()
         if control.key not in hidden and _is_sensor(control)
     )
@@ -28,12 +29,16 @@ def _is_sensor(control: WBControl) -> bool:
 
 
 class WBSensor(WBEntity, SensorEntity):
-    def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
+    def __init__(
+        self, client: WBRuntimeClient, control: WBControl, configured_class: str | None = None
+    ) -> None:
         super().__init__(client, control)
         metadata = _sensor_metadata(control)
-        self._attr_device_class = metadata.get("device_class")
+        self._attr_device_class = configured_class or metadata.get("device_class")
         self._attr_state_class = metadata.get("state_class")
         self._attr_native_unit_of_measurement = metadata.get("unit")
+        if configured_class in {"gas", "water"}:
+            self._attr_state_class = "total_increasing"
 
     @property
     def native_value(self):
@@ -48,7 +53,7 @@ class WBSensor(WBEntity, SensorEntity):
 def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
     control_type = (control.control_type or "").lower()
     units = control.units or control.meta.get("units") or control.meta.get("unit")
-    unit = str(units) if units is not None else None
+    unit = _display_unit(str(units)) if units is not None else None
     unit_key = _normalize_unit(unit)
     text = f"{control.control_id} {control.control_name or ''}".lower()
 
@@ -108,7 +113,14 @@ def _metadata_from_unit(unit_key: str | None, unit: str | None, text: str) -> di
 def _normalize_unit(unit: str | None) -> str | None:
     if unit is None:
         return None
-    return unit.strip().replace("℃", "°C").lower()
+    return _display_unit(unit).strip().replace("℃", "°C").lower()
+
+
+def _display_unit(unit: str) -> str:
+    normalized = unit.strip()
+    if normalized.lower() in {"m^3", "m3", "м^3", "м3"}:
+        return "m³"
+    return normalized
 
 
 def _can_float(value: str | None) -> bool:

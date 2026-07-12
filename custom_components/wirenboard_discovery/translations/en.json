@@ -42,6 +42,8 @@
           "add_group": "Add or update group",
           "edit_group": "Edit group",
           "remove_group": "Remove group",
+          "configure_meters": "Configure gas and water meters",
+          "remove_entities": "Remove unwanted entities",
           "export_config": "Export configuration",
           "import_config": "Import configuration",
           "diagnostics": "Diagnostics"
@@ -52,6 +54,21 @@
         "description": "Select binary sensors whose on and off states should be reversed.",
         "data": {
           "inverted_binary_sensors": "Inverted sensors"
+        }
+      },
+      "configure_meters": {
+        "title": "Gas and water meters",
+        "description": "Assign a type to volume sensors. A sensor cannot be both a gas and water meter.",
+        "data": {
+          "gas_sensors": "Gas meters",
+          "water_sensors": "Water meters"
+        }
+      },
+      "remove_entities": {
+        "title": "Remove unwanted entities",
+        "description": "Permanently remove standalone entities and their empty devices. Entities used by groups are not shown here.",
+        "data": {
+          "entities_to_remove": "Entities to remove"
         }
       },
       "controls": {
@@ -163,6 +180,7 @@
     "error": {
       "cannot_connect": "Cannot connect to the Wiren Board MQTT broker.",
       "required": "Fill in this field.",
+      "meter_type_overlap": "The same sensor is selected as both gas and water.",
       "already_exists": "A group with this ID already exists.",
       "invalid_import": "Could not read import JSON.",
       "no_groups": "No groups have been created yet."

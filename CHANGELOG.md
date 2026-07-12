@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.0
+
+- Normalize cubic metre units from `m^3` and `m3` to the Home Assistant unit `m³`.
+- Added configuration for assigning volume sensors as gas or water meters.
+- Show Home Assistant entity names in binary sensor inversion and meter configuration lists.
+- Removed controls from the integration when they are removed from a group instead of moving them back to automatically created devices.
+- Clean up entity and empty device registry entries for controls removed from groups.
+- Added "Remove unwanted entities" for cleaning up standalone entities created by earlier versions.
+- Moved binary sensor inversion below group removal in the options menu.
+
 ## 0.11.0
 
 - Added per-entity state inversion for read-only binary sensors.

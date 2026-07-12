@@ -11,11 +11,14 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.helpers import entity_registry as er
 
 from .composite import TYPE_AC, TYPE_COVER, TYPE_COVER_GATE, TYPE_DEVICE, TYPE_THERMOSTAT, default_group_type
 from .const import (
     CONF_DEVICE_GROUPS,
     CONF_INVERTED_BINARY_SENSORS,
+    CONF_REMOVED_CONTROLS,
+    CONF_SENSOR_DEVICE_CLASSES,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
     CONF_SHOW_SYSTEM_DEVICES,
@@ -206,15 +209,61 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
-                "invert_binary_sensors",
                 "add_group",
                 "edit_group",
                 "remove_group",
+                "invert_binary_sensors",
+                "configure_meters",
+                "remove_entities",
                 "export_config",
                 "import_config",
                 "diagnostics",
                 "connection",
             ],
+        )
+
+    async def async_step_remove_entities(
+        self, user_input: dict[str, Any] | None = None
+    ):
+        errors: dict[str, str] = {}
+        errors.update(await self._async_load_controls())
+        selected = set(self._current_selected_controls())
+        grouped = {
+            str(key)
+            for group in self._current_groups().values()
+            for key in group.get("controls", [])
+        }
+        removable = {
+            key: control
+            for key, control in self._controls.items()
+            if key in selected and key not in grouped
+        }
+
+        if user_input is not None:
+            to_remove = set(user_input["entities_to_remove"])
+            selected.difference_update(to_remove)
+            removed = set(self._current_removed_controls())
+            removed.update(to_remove)
+            return self.async_create_entry(
+                title="",
+                data=self._options_with(
+                    selected_controls=sorted(selected),
+                    removed_controls=sorted(removed),
+                ),
+            )
+
+        return self.async_show_form(
+            step_id="remove_entities",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("entities_to_remove", default=[]): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=self._entity_select_options(removable), multiple=True
+                        )
+                    )
+                }
+            ),
+            errors=errors,
         )
 
     async def async_step_invert_binary_sensors(
@@ -254,9 +303,58 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                         CONF_INVERTED_BINARY_SENSORS, default=inverted
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=_select_options(binary_controls), multiple=True
+                            options=self._entity_select_options(binary_controls, "binary_sensor"),
+                            multiple=True,
                         )
                     )
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_configure_meters(
+        self, user_input: dict[str, Any] | None = None
+    ):
+        errors: dict[str, str] = {}
+        errors.update(await self._async_load_controls())
+        selected = set(self._current_selected_controls())
+        meter_controls = {
+            key: control
+            for key, control in self._controls.items()
+            if key in selected and control.is_readonly and _is_volume_control(control)
+        }
+        current = self._current_sensor_device_classes()
+
+        if user_input is not None:
+            gas = set(user_input["gas_sensors"])
+            water = set(user_input["water_sensors"])
+            if gas & water:
+                errors["base"] = "meter_type_overlap"
+            else:
+                configured = {key: "gas" for key in gas}
+                configured.update({key: "water" for key in water})
+                return self.async_create_entry(
+                    title="",
+                    data=self._options_with(sensor_device_classes=configured),
+                )
+
+        options = self._entity_select_options(meter_controls, "sensor")
+        return self.async_show_form(
+            step_id="configure_meters",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "gas_sensors",
+                        default=[key for key, value in current.items() if value == "gas"],
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options, multiple=True)
+                    ),
+                    vol.Required(
+                        "water_sensors",
+                        default=[key for key, value in current.items() if value == "water"],
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options, multiple=True)
+                    ),
                 }
             ),
             errors=errors,
@@ -344,6 +442,8 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 }
                 selected = set(self._current_selected_controls())
                 selected.update(user_input["group_controls"])
+                removed_controls = set(self._current_removed_controls())
+                removed_controls.difference_update(user_input["group_controls"])
                 if user_input["group_type"] != TYPE_DEVICE:
                     self._pending_group_id = group_id
                     self._pending_group = groups[group_id]
@@ -353,6 +453,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                     title="",
                     data=self._options_with(
                         selected_controls=sorted(selected),
+                        removed_controls=sorted(removed_controls),
                         device_groups=groups,
                     ),
                 )
@@ -389,11 +490,14 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             groups[self._pending_group_id] = group
             selected = set(self._current_selected_controls())
             selected.update(group["controls"])
+            removed_controls = set(self._current_removed_controls())
+            removed_controls.difference_update(group["controls"])
             self._clear_pending_group()
             return self.async_create_entry(
                 title="",
                 data=self._options_with(
                     selected_controls=sorted(selected),
+                    removed_controls=sorted(removed_controls),
                     device_groups=groups,
                 ),
             )
@@ -453,8 +557,14 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                         "roles": group.get("roles", {}),
                         "expose_controls": group.get("expose_controls", []),
                     }
-                    selected = set(self._current_selected_controls())
-                    selected.update(user_input["group_controls"])
+                    old_controls = set(group.get("controls", []))
+                    new_controls = set(user_input["group_controls"])
+                    selected, removed_controls = self._selection_after_group_change(
+                        groups,
+                        added=new_controls,
+                        removed=old_controls - new_controls,
+                        replacing_group_id=group_id,
+                    )
                     if user_input["group_type"] != TYPE_DEVICE:
                         self._pending_old_group_id = group_id
                         self._pending_group_id = new_group_id
@@ -466,6 +576,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                         title="",
                         data=self._options_with(
                             selected_controls=sorted(selected),
+                            removed_controls=sorted(removed_controls),
                             device_groups=groups,
                         ),
                     )
@@ -496,20 +607,28 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             groups = self._current_groups()
+            old_controls: set[str] = set()
             if self._pending_old_group_id:
+                old_controls = set(
+                    groups.get(self._pending_old_group_id, {}).get("controls", [])
+                )
                 groups.pop(self._pending_old_group_id, None)
             group = dict(self._pending_group)
             group["roles"] = _roles_from_input(user_input)
             group["expose_controls"] = user_input.get("expose_controls", [])
             groups[self._pending_group_id] = group
-            selected = set(self._current_selected_controls())
-            selected.update(group["controls"])
+            selected, removed_controls = self._selection_after_group_change(
+                groups,
+                added=set(group["controls"]),
+                removed=old_controls - set(group["controls"]),
+            )
             self._clear_pending_group()
             self._edit_group_id = None
             return self.async_create_entry(
                 title="",
                 data=self._options_with(
                     selected_controls=sorted(selected),
+                    removed_controls=sorted(removed_controls),
                     device_groups=groups,
                 ),
             )
@@ -527,10 +646,18 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             )
 
         if user_input is not None:
-            groups.pop(user_input["group_id"], None)
+            removed_group = groups.pop(user_input["group_id"], None) or {}
+            selected, removed_controls = self._selection_after_group_change(
+                groups,
+                removed=set(removed_group.get("controls", [])),
+            )
             return self.async_create_entry(
                 title="",
-                data=self._options_with(device_groups=groups),
+                data=self._options_with(
+                    selected_controls=sorted(selected),
+                    removed_controls=sorted(removed_controls),
+                    device_groups=groups,
+                ),
             )
 
         schema = vol.Schema(
@@ -649,6 +776,65 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
     def _current_inverted_binary_sensors(self) -> list[str]:
         return self._config_entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
 
+    def _current_sensor_device_classes(self) -> dict[str, str]:
+        return dict(self._config_entry.options.get(CONF_SENSOR_DEVICE_CLASSES, {}))
+
+    def _current_removed_controls(self) -> list[str]:
+        return list(self._config_entry.options.get(CONF_REMOVED_CONTROLS, []))
+
+    def _entity_select_options(
+        self, controls: dict[str, WBControl], domain: str | None = None
+    ) -> list[selector.SelectOptionDict]:
+        registry = er.async_get(self.hass)
+        options: list[selector.SelectOptionDict] = []
+        for key, control in sorted(controls.items()):
+            label = control.title
+            entity_id = (
+                registry.async_get_entity_id(domain, DOMAIN, control.unique_id)
+                if domain
+                else next(
+                    (
+                        entry.entity_id
+                        for entry in er.async_entries_for_config_entry(
+                            registry, self._config_entry.entry_id
+                        )
+                        if entry.unique_id == control.unique_id
+                    ),
+                    None,
+                )
+            )
+            if entity_id:
+                entity = registry.async_get(entity_id)
+                if entity and (entity.name or entity.original_name):
+                    label = str(entity.name or entity.original_name)
+            options.append(selector.SelectOptionDict(value=key, label=label))
+        return options
+
+    def _selection_after_group_change(
+        self,
+        groups: dict[str, dict[str, Any]],
+        *,
+        added: set[str] | None = None,
+        removed: set[str] | None = None,
+        replacing_group_id: str | None = None,
+    ) -> tuple[set[str], set[str]]:
+        added = added or set()
+        removed = removed or set()
+        controls_still_used = {
+            str(key)
+            for group_id, group in groups.items()
+            if group_id != replacing_group_id
+            for key in group.get("controls", [])
+        }
+        actually_removed = removed - controls_still_used - added
+        selected = set(self._current_selected_controls())
+        selected.difference_update(actually_removed)
+        selected.update(added)
+        removed_controls = set(self._current_removed_controls())
+        removed_controls.update(actually_removed)
+        removed_controls.difference_update(selected)
+        return selected, removed_controls
+
     def _current_groups(self) -> dict[str, dict[str, Any]]:
         groups = {}
         for key, value in self._config_entry.options.get(CONF_DEVICE_GROUPS, {}).items():
@@ -664,6 +850,8 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         self,
         selected_controls: list[str] | None = None,
         inverted_binary_sensors: list[str] | None = None,
+        sensor_device_classes: dict[str, str] | None = None,
+        removed_controls: list[str] | None = None,
         device_groups: dict[str, dict[str, Any]] | None = None,
         show_system_devices: bool | None = None,
         connection: dict[str, Any] | None = None,
@@ -673,6 +861,16 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             inverted_binary_sensors
             if inverted_binary_sensors is not None
             else self._current_inverted_binary_sensors()
+        )
+        sensor_classes = (
+            sensor_device_classes
+            if sensor_device_classes is not None
+            else self._current_sensor_device_classes()
+        )
+        removed = (
+            removed_controls
+            if removed_controls is not None
+            else self._current_removed_controls()
         )
         groups = device_groups if device_groups is not None else self._current_groups()
         show_system = show_system_devices if show_system_devices is not None else self._show_system_devices()
@@ -691,6 +889,8 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return {
             CONF_SELECTED_CONTROLS: selected,
             CONF_INVERTED_BINARY_SENSORS: inverted,
+            CONF_SENSOR_DEVICE_CLASSES: sensor_classes,
+            CONF_REMOVED_CONTROLS: removed,
             "discovered_controls": controls,
             CONF_DEVICE_GROUPS: groups,
             CONF_SHOW_SYSTEM_DEVICES: show_system,
@@ -737,6 +937,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             "show_system_devices": self._show_system_devices(),
             "selected_controls": self._current_selected_controls(),
             "inverted_binary_sensors": self._current_inverted_binary_sensors(),
+            "sensor_device_classes": self._current_sensor_device_classes(),
             "device_groups": self._current_groups(),
             "discovered_controls": self._config_entry.options.get(
                 "discovered_controls",
@@ -753,6 +954,11 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         connection = payload.get("connection") or {}
         selected = [str(key) for key in payload.get("selected_controls", [])]
         inverted = [str(key) for key in payload.get("inverted_binary_sensors", [])]
+        sensor_classes = {
+            str(key): str(value)
+            for key, value in (payload.get("sensor_device_classes") or {}).items()
+            if value in {"gas", "water"}
+        }
         groups = payload.get("device_groups") or {}
         discovered = payload.get("discovered_controls") or {}
         if not isinstance(groups, dict) or not isinstance(discovered, dict):
@@ -761,6 +967,8 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return {
             CONF_SELECTED_CONTROLS: selected,
             CONF_INVERTED_BINARY_SENSORS: inverted,
+            CONF_SENSOR_DEVICE_CLASSES: sensor_classes,
+            CONF_REMOVED_CONTROLS: [],
             "discovered_controls": discovered,
             CONF_DEVICE_GROUPS: groups,
             CONF_SHOW_SYSTEM_DEVICES: bool(payload.get("show_system_devices", DEFAULT_SHOW_SYSTEM_DEVICES)),
@@ -893,6 +1101,12 @@ def _control_label(key: str, control: WBControl, membership: dict[str, str]) -> 
     if key in membership:
         label = f"{label} [{membership[key]}]"
     return label
+
+
+def _is_volume_control(control: WBControl) -> bool:
+    units = control.units or control.meta.get("units") or control.meta.get("unit")
+    normalized = str(units or "").strip().lower().replace(" ", "")
+    return normalized in {"m^3", "m3", "m³", "м^3", "м3", "м³"}
 
 
 def _group_type_options() -> list[selector.SelectOptionDict]:

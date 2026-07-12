@@ -9,6 +9,8 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNA
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .config_flow import control_from_dict
@@ -19,6 +21,8 @@ from .const import (
     ATTR_PHONE,
     CONF_DEVICE_GROUPS,
     CONF_INVERTED_BINARY_SENSORS,
+    CONF_REMOVED_CONTROLS,
+    CONF_SENSOR_DEVICE_CLASSES,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
     DOMAIN,
@@ -85,6 +89,7 @@ def _normalize_phone(value: str) -> str:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    _remove_stale_control_entries(hass, entry)
     data = _entry_connection(entry)
     client = WBRuntimeClient(
         hass.loop,
@@ -108,10 +113,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "inverted_binary_sensors": set(
             entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
         ),
+        "sensor_device_classes": entry.options.get(CONF_SENSOR_DEVICE_CLASSES, {}),
     }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    removed = set(entry.options.get(CONF_REMOVED_CONTROLS, []))
+    if not removed:
+        return
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+    removed_unique_ids = {
+        re.sub(r"[^a-z0-9_]+", "_", f"wb_{key}".lower()).strip("_")
+        for key in removed
+    }
+    affected_devices: set[str] = set()
+    for entity in list(er.async_entries_for_config_entry(entity_registry, entry.entry_id)):
+        if entity.unique_id in removed_unique_ids:
+            if entity.device_id:
+                affected_devices.add(entity.device_id)
+            entity_registry.async_remove(entity.entity_id)
+    remaining_device_ids = {
+        entity.device_id
+        for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+        if entity.device_id
+    }
+    for device_id in affected_devices - remaining_device_ids:
+        device = device_registry.async_get(device_id)
+        if device and entry.entry_id in device.config_entries:
+            device_registry.async_remove_device(device_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
