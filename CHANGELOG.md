@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.5
+
+- Wait for the Wiren Board MQTT connection to be fully ready during Home Assistant startup, preventing the first SMS action from being lost after a restart.
+- Report an unavailable MQTT connection instead of silently publishing while disconnected.
+
 ## 0.10.4
 
 - Reset the Wiren Board SMS command to whitespace after it has been accepted, allowing identical consecutive messages to trigger `whenChanged` reliably.

@@ -221,12 +221,14 @@ class WBRuntimeClient:
         self._prefix = normalize_topic_prefix(prefix)
         self._parser = WBTopicParser(prefix)
         self._callbacks: dict[str, list[ValueCallback]] = {}
+        self._connected = threading.Event()
         from paho.mqtt import client as mqtt
 
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if username:
             self._client.username_pw_set(username, password)
         self._client.on_connect = self._on_connect
+        self._client.on_disconnect = self._on_disconnect
         self._client.on_message = self._on_message
 
     @property
@@ -249,16 +251,24 @@ class WBRuntimeClient:
         self._client.publish(topic, value)
 
     def publish_control_by_id(self, device_id: str, control_id: str, value: str) -> None:
+        if not self._connected.is_set():
+            raise WBDiscoveryError("Wiren Board MQTT connection is not ready")
         topic = f"{self._prefix.rstrip('/')}/devices/{device_id}/controls/{control_id}/on"
         if topic.startswith("//"):
             topic = topic[1:]
         self._client.publish(topic, value)
 
     def _start(self) -> None:
+        self._connected.clear()
         self._client.connect(self._host, self._port, keepalive=30)
         self._client.loop_start()
+        if not self._connected.wait(timeout=10):
+            self._client.loop_stop()
+            self._client.disconnect()
+            raise WBDiscoveryError("timeout waiting for Wiren Board MQTT connection")
 
     def _stop(self) -> None:
+        self._connected.clear()
         self._client.loop_stop()
         self._client.disconnect()
 
@@ -266,10 +276,16 @@ class WBRuntimeClient:
         if _reason_code_failed(reason_code):
             _LOGGER.warning("Wiren Board MQTT connection failed: %s", reason_code)
             return
+        self._connected.set()
         topic = f"{self._prefix.rstrip('/')}/devices/#"
         if topic.startswith("//"):
             topic = topic[1:]
         client.subscribe(topic)
+
+    def _on_disconnect(
+        self, _client, _userdata, _disconnect_flags, _reason_code, _properties
+    ) -> None:
+        self._connected.clear()
 
     def _on_message(self, _client, _userdata, message) -> None:
         payload = message.payload.decode("utf-8", errors="replace")
