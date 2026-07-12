@@ -22,7 +22,6 @@ from .const import (
     CONF_DEVICE_GROUPS,
     CONF_INVERTED_BINARY_SENSORS,
     CONF_REMOVED_CONTROLS,
-    CONF_SENSOR_DEVICE_CLASSES,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
     DOMAIN,
@@ -113,7 +112,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "inverted_binary_sensors": set(
             entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
         ),
-        "sensor_device_classes": entry.options.get(CONF_SENSOR_DEVICE_CLASSES, {}),
     }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
@@ -122,8 +120,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> None:
     removed = set(entry.options.get(CONF_REMOVED_CONTROLS, []))
-    if not removed:
-        return
     entity_registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
     removed_unique_ids = {
@@ -136,14 +132,16 @@ def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> No
             if entity.device_id:
                 affected_devices.add(entity.device_id)
             entity_registry.async_remove(entity.entity_id)
-    remaining_device_ids = {
-        entity.device_id
-        for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id)
-        if entity.device_id
+    candidate_devices = affected_devices | {
+        device.id
+        for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id)
     }
-    for device_id in affected_devices - remaining_device_ids:
+    for device_id in candidate_devices:
         device = device_registry.async_get(device_id)
-        if device and entry.entry_id in device.config_entries:
+        device_entities = er.async_entries_for_device(
+            entity_registry, device_id, include_disabled_entities=True
+        )
+        if device and entry.entry_id in device.config_entries and not device_entities:
             device_registry.async_remove_device(device_id)
 
 

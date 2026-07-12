@@ -18,7 +18,6 @@ from .const import (
     CONF_DEVICE_GROUPS,
     CONF_INVERTED_BINARY_SENSORS,
     CONF_REMOVED_CONTROLS,
-    CONF_SENSOR_DEVICE_CLASSES,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
     CONF_SHOW_SYSTEM_DEVICES,
@@ -213,7 +212,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 "edit_group",
                 "remove_group",
                 "invert_binary_sensors",
-                "configure_meters",
                 "remove_entities",
                 "export_config",
                 "import_config",
@@ -307,54 +305,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                             multiple=True,
                         )
                     )
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_configure_meters(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        errors: dict[str, str] = {}
-        errors.update(await self._async_load_controls())
-        selected = set(self._current_selected_controls())
-        meter_controls = {
-            key: control
-            for key, control in self._controls.items()
-            if key in selected and control.is_readonly and _is_volume_control(control)
-        }
-        current = self._current_sensor_device_classes()
-
-        if user_input is not None:
-            gas = set(user_input["gas_sensors"])
-            water = set(user_input["water_sensors"])
-            if gas & water:
-                errors["base"] = "meter_type_overlap"
-            else:
-                configured = {key: "gas" for key in gas}
-                configured.update({key: "water" for key in water})
-                return self.async_create_entry(
-                    title="",
-                    data=self._options_with(sensor_device_classes=configured),
-                )
-
-        options = self._entity_select_options(meter_controls, "sensor")
-        return self.async_show_form(
-            step_id="configure_meters",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        "gas_sensors",
-                        default=[key for key, value in current.items() if value == "gas"],
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(options=options, multiple=True)
-                    ),
-                    vol.Required(
-                        "water_sensors",
-                        default=[key for key, value in current.items() if value == "water"],
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(options=options, multiple=True)
-                    ),
                 }
             ),
             errors=errors,
@@ -776,9 +726,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
     def _current_inverted_binary_sensors(self) -> list[str]:
         return self._config_entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
 
-    def _current_sensor_device_classes(self) -> dict[str, str]:
-        return dict(self._config_entry.options.get(CONF_SENSOR_DEVICE_CLASSES, {}))
-
     def _current_removed_controls(self) -> list[str]:
         return list(self._config_entry.options.get(CONF_REMOVED_CONTROLS, []))
 
@@ -850,7 +797,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         self,
         selected_controls: list[str] | None = None,
         inverted_binary_sensors: list[str] | None = None,
-        sensor_device_classes: dict[str, str] | None = None,
         removed_controls: list[str] | None = None,
         device_groups: dict[str, dict[str, Any]] | None = None,
         show_system_devices: bool | None = None,
@@ -861,11 +807,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             inverted_binary_sensors
             if inverted_binary_sensors is not None
             else self._current_inverted_binary_sensors()
-        )
-        sensor_classes = (
-            sensor_device_classes
-            if sensor_device_classes is not None
-            else self._current_sensor_device_classes()
         )
         removed = (
             removed_controls
@@ -889,7 +830,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return {
             CONF_SELECTED_CONTROLS: selected,
             CONF_INVERTED_BINARY_SENSORS: inverted,
-            CONF_SENSOR_DEVICE_CLASSES: sensor_classes,
             CONF_REMOVED_CONTROLS: removed,
             "discovered_controls": controls,
             CONF_DEVICE_GROUPS: groups,
@@ -937,7 +877,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             "show_system_devices": self._show_system_devices(),
             "selected_controls": self._current_selected_controls(),
             "inverted_binary_sensors": self._current_inverted_binary_sensors(),
-            "sensor_device_classes": self._current_sensor_device_classes(),
             "device_groups": self._current_groups(),
             "discovered_controls": self._config_entry.options.get(
                 "discovered_controls",
@@ -954,11 +893,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         connection = payload.get("connection") or {}
         selected = [str(key) for key in payload.get("selected_controls", [])]
         inverted = [str(key) for key in payload.get("inverted_binary_sensors", [])]
-        sensor_classes = {
-            str(key): str(value)
-            for key, value in (payload.get("sensor_device_classes") or {}).items()
-            if value in {"gas", "water"}
-        }
         groups = payload.get("device_groups") or {}
         discovered = payload.get("discovered_controls") or {}
         if not isinstance(groups, dict) or not isinstance(discovered, dict):
@@ -967,7 +901,6 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return {
             CONF_SELECTED_CONTROLS: selected,
             CONF_INVERTED_BINARY_SENSORS: inverted,
-            CONF_SENSOR_DEVICE_CLASSES: sensor_classes,
             CONF_REMOVED_CONTROLS: [],
             "discovered_controls": discovered,
             CONF_DEVICE_GROUPS: groups,
@@ -1101,12 +1034,6 @@ def _control_label(key: str, control: WBControl, membership: dict[str, str]) -> 
     if key in membership:
         label = f"{label} [{membership[key]}]"
     return label
-
-
-def _is_volume_control(control: WBControl) -> bool:
-    units = control.units or control.meta.get("units") or control.meta.get("unit")
-    normalized = str(units or "").strip().lower().replace(" ", "")
-    return normalized in {"m^3", "m3", "m³", "м^3", "м3", "м³"}
 
 
 def _group_type_options() -> list[selector.SelectOptionDict]:

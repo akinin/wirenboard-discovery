@@ -16,9 +16,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     client = data["client"]
     controls = data["controls"]
     hidden = data.get("hidden_controls", set())
-    configured_classes = data.get("sensor_device_classes", {})
     async_add_entities(
-        WBSensor(client, control, configured_classes.get(control.key))
+        WBSensor(client, control)
         for control in controls.values()
         if control.key not in hidden and _is_sensor(control)
     )
@@ -29,16 +28,12 @@ def _is_sensor(control: WBControl) -> bool:
 
 
 class WBSensor(WBEntity, SensorEntity):
-    def __init__(
-        self, client: WBRuntimeClient, control: WBControl, configured_class: str | None = None
-    ) -> None:
+    def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
         metadata = _sensor_metadata(control)
-        self._attr_device_class = configured_class or metadata.get("device_class")
+        self._attr_device_class = metadata.get("device_class")
         self._attr_state_class = metadata.get("state_class")
         self._attr_native_unit_of_measurement = metadata.get("unit")
-        if configured_class in {"gas", "water"}:
-            self._attr_state_class = "total_increasing"
 
     @property
     def native_value(self):
@@ -68,10 +63,12 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         "power_consumption": {"device_class": "energy", "unit": unit or "kWh"},
         "current": {"device_class": "current", "unit": unit or "A"},
         "frequency": {"device_class": "frequency", "unit": unit or "Hz"},
+        "gas": {"device_class": "gas", "unit": unit or "m³"},
+        "water": {"device_class": "water", "unit": unit or "m³"},
     }
     metadata = mapping.get(control_type) or _metadata_from_unit(unit_key, unit, text) or {"device_class": None, "unit": unit}
     state_class = "measurement" if _can_float(control.value) else None
-    if metadata.get("device_class") == "energy" and state_class:
+    if metadata.get("device_class") in {"energy", "gas", "water"} and state_class:
         state_class = "total_increasing"
     return {
         "device_class": metadata.get("device_class"),

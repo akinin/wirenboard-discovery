@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.1
+
+- Added `gas` and `water` to the existing Wiren Board sensor type mapping and removed the separate meter configuration menu.
+- Automatically use `m³` and `total_increasing` for mapped gas and water counters.
+- Remove empty integration devices even when their last entity was deleted before the current cleanup run.
+
 ## 0.12.0
 
 - Normalize cubic metre units from `m^3` and `m3` to the Home Assistant unit `m³`.
