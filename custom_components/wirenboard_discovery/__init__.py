@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import re
 
 import voluptuous as vol
@@ -50,8 +49,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             raise ServiceValidationError("SMS message must not be empty")
 
         client: WBRuntimeClient = runtime["client"]
-        client.publish_control_by_id("sms_sender", "send", "")
-        await asyncio.sleep(0.2)
         client.publish_control_by_id("sms_sender", "send", f"{phone};{message}")
 
     hass.services.async_register(

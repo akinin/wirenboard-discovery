@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.2
+
+- Removed the pre-send MQTT reset because rapid reset/send updates can be coalesced by Wiren Board and skip `whenChanged`.
+- Repeated identical messages remain supported when `send_sms.js` clears `sms_sender/send` after accepting a command.
+
 ## 0.10.1
 
 - Reset the SMS command control before publishing so identical consecutive messages trigger `whenChanged` reliably.
