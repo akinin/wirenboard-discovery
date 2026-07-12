@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0
+
+- Added the `wirenboard_discovery.send_sms` action using the existing Wiren Board MQTT connection.
+- Added dynamic recipient validation and Russian phone number normalization.
+
 ## 0.9.4
 
 - Added Zeroconf discovery for Wiren Board controllers announced as `wirenboard-*.local`.

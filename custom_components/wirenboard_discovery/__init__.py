@@ -1,15 +1,76 @@
 from __future__ import annotations
 
+import re
+
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .config_flow import control_from_dict
 from .composite import composite_control_keys, normalize_groups
-from .const import CONF_DEVICE_GROUPS, CONF_PREFIX, CONF_SELECTED_CONTROLS, DOMAIN, PLATFORMS
+from .const import (
+    ATTR_CONFIG_ENTRY_ID,
+    ATTR_MESSAGE,
+    ATTR_PHONE,
+    CONF_DEVICE_GROUPS,
+    CONF_PREFIX,
+    CONF_SELECTED_CONTROLS,
+    DOMAIN,
+    PLATFORMS,
+    SERVICE_SEND_SMS,
+)
 from .device_groups import apply_device_groups
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
+
+SEND_SMS_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Required(ATTR_PHONE): cv.string,
+        vol.Required(ATTR_MESSAGE): vol.All(cv.string, vol.Length(min=1, max=1000)),
+    }
+)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    async def async_send_sms(call: ServiceCall) -> None:
+        entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
+        runtime = hass.data.get(DOMAIN, {}).get(entry_id)
+        if runtime is None:
+            raise ServiceValidationError("Wiren Board configuration entry is not loaded")
+
+        phone = _normalize_phone(call.data[ATTR_PHONE])
+        message = call.data[ATTR_MESSAGE].strip()
+        if not message:
+            raise ServiceValidationError("SMS message must not be empty")
+
+        client: WBRuntimeClient = runtime["client"]
+        client.publish_control_by_id("sms_sender", "send", f"{phone};{message}")
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SEND_SMS,
+        async_send_sms,
+        schema=SEND_SMS_SCHEMA,
+    )
+    return True
+
+
+def _normalize_phone(value: str) -> str:
+    phone = re.sub(r"[\s\-().]+", "", str(value).strip())
+    if re.fullmatch(r"\+\d{7,15}", phone):
+        return phone
+    if re.fullmatch(r"7\d{10}", phone):
+        return f"+{phone}"
+    if re.fullmatch(r"8\d{10}", phone):
+        return f"+7{phone[1:]}"
+    if re.fullmatch(r"\d{10}", phone):
+        return f"+7{phone}"
+    raise ServiceValidationError("Phone number has an invalid format")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

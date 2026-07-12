@@ -248,6 +248,12 @@ class WBRuntimeClient:
         topic = self._topic_for(control, command=True)
         self._client.publish(topic, value)
 
+    def publish_control_by_id(self, device_id: str, control_id: str, value: str) -> None:
+        topic = f"{self._prefix.rstrip('/')}/devices/{device_id}/controls/{control_id}/on"
+        if topic.startswith("//"):
+            topic = topic[1:]
+        self._client.publish(topic, value)
+
     def _start(self) -> None:
         self._client.connect(self._host, self._port, keepalive=30)
         self._client.loop_start()

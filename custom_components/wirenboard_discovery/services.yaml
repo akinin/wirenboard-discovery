@@ -1,0 +1,26 @@
+send_sms:
+  name: Send SMS
+  description: Send an SMS through the selected Wiren Board controller.
+  fields:
+    config_entry_id:
+      name: Wiren Board
+      description: Wiren Board Discovery connection used to send the command.
+      required: true
+      selector:
+        config_entry:
+          integration: wirenboard_discovery
+    phone:
+      name: Phone
+      description: Recipient phone number. The value is supplied for each action call.
+      required: true
+      example: "+79991234567"
+      selector:
+        text:
+    message:
+      name: Message
+      description: SMS text.
+      required: true
+      example: "Test message"
+      selector:
+        text:
+          multiline: true

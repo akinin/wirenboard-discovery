@@ -17,6 +17,7 @@
 - скрывает системные устройства в списке выбора по умолчанию;
 - проставляет классы и единицы измерения для основных сенсоров;
 - отправляет команды записи в стандартный топик Wiren Board `/devices/<device>/controls/<control>/on`.
+- предоставляет действие `wirenboard_discovery.send_sms` для отправки SMS через `sms_sender` на Wiren Board.
 
 ## Установка через HACS
 
@@ -62,6 +63,32 @@
 <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/elements.png" width="400"/> <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/elements_2.png" width="400"/>
 
 <img src="https://raw.githubusercontent.com/akinin/wirenboard-discovery/refs/heads/main/images/add_integration_3.png" />
+
+## Отправка SMS
+
+Если на Wiren Board создано виртуальное устройство `sms_sender` с текстовым
+контролом `send`, интеграция может отправлять SMS через уже настроенное MQTT-соединение.
+Отдельная MQTT-интеграция Home Assistant или MQTT bridge для этого не нужны.
+
+В автоматизации выберите действие `Wiren Board Discovery: Send SMS` и укажите
+подключение Wiren Board, номер получателя и текст. YAML-вариант:
+
+```yaml
+action: wirenboard_discovery.send_sms
+data:
+  config_entry_id: YOUR_CONFIG_ENTRY_ID
+  phone: "+79991234567"
+  message: "Test message"
+```
+
+Номер передаётся при каждом вызове и не хранится в настройках интеграции.
+Поддерживаются международные номера с `+`, а российские номера из 10 или 11 цифр
+автоматически приводятся к формату `+7XXXXXXXXXX`.
+
+Действие публикует строку `номер;сообщение` в
+`/devices/sms_sender/controls/send/on`. На Wiren Board должен быть установлен
+скрипт, который принимает этот контрол, вызывает `Notify.sendSMS()` и очищает
+`sms_sender/send` после обработки.
 
 ## Логические устройства
 
