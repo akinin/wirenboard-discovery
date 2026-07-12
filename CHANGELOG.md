@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.3
+
+- Serialized SMS action calls per Wiren Board connection.
+- Wait briefly after publishing so `send_sms.js` can clear the control before an identical message is sent again.
+
 ## 0.10.2
 
 - Removed the pre-send MQTT reset because rapid reset/send updates can be coalesced by Wiren Board and skip `whenChanged`.

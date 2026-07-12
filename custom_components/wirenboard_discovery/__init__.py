@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 
 import voluptuous as vol
@@ -49,7 +50,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             raise ServiceValidationError("SMS message must not be empty")
 
         client: WBRuntimeClient = runtime["client"]
-        client.publish_control_by_id("sms_sender", "send", f"{phone};{message}")
+        async with runtime["sms_lock"]:
+            client.publish_control_by_id("sms_sender", "send", f"{phone};{message}")
+            # wb-rules clears sms_sender/send after accepting the command. Keep
+            # this action open briefly so a following identical call cannot be
+            # published before the control has returned to an empty value.
+            await asyncio.sleep(0.5)
 
     hass.services.async_register(
         DOMAIN,
@@ -90,6 +96,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     apply_device_groups(hass, controls, groups)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
+        "sms_lock": asyncio.Lock(),
         "controls": controls,
         "groups": groups,
         "hidden_controls": composite_control_keys(groups),
