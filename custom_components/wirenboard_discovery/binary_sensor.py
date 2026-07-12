@@ -16,8 +16,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     client = data["client"]
     controls = data["controls"]
     hidden = data.get("hidden_controls", set())
+    inverted = data.get("inverted_binary_sensors", set())
     async_add_entities(
-        WBBinarySensor(client, control)
+        WBBinarySensor(client, control, control.key in inverted)
         for control in controls.values()
         if control.key not in hidden and _is_binary_sensor(control)
     )
@@ -28,15 +29,17 @@ def _is_binary_sensor(control: WBControl) -> bool:
 
 
 class WBBinarySensor(WBEntity, BinarySensorEntity):
-    def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
+    def __init__(self, client: WBRuntimeClient, control: WBControl, inverted: bool = False) -> None:
         super().__init__(client, control)
+        self._inverted = inverted
         self._attr_device_class = _binary_device_class(control)
 
     @property
     def is_on(self) -> bool | None:
         if self._value is None:
             return None
-        return str(self._value).strip().lower() in {"1", "true", "on"}
+        is_on = str(self._value).strip().lower() in {"1", "true", "on"}
+        return not is_on if self._inverted else is_on
 
 
 def _binary_device_class(control: WBControl) -> str | None:

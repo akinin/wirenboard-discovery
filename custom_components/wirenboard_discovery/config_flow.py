@@ -15,6 +15,7 @@ from homeassistant.helpers import selector
 from .composite import TYPE_AC, TYPE_COVER, TYPE_COVER_GATE, TYPE_DEVICE, TYPE_THERMOSTAT, default_group_type
 from .const import (
     CONF_DEVICE_GROUPS,
+    CONF_INVERTED_BINARY_SENSORS,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
     CONF_SHOW_SYSTEM_DEVICES,
@@ -205,7 +206,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
-                "controls",
+                "invert_binary_sensors",
                 "add_group",
                 "edit_group",
                 "remove_group",
@@ -214,6 +215,51 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 "diagnostics",
                 "connection",
             ],
+        )
+
+    async def async_step_invert_binary_sensors(
+        self, user_input: dict[str, Any] | None = None
+    ):
+        errors: dict[str, str] = {}
+        errors.update(await self._async_load_controls())
+        selected = set(self._current_selected_controls())
+        binary_controls = {
+            key: control
+            for key, control in self._controls.items()
+            if key in selected
+            and control.control_type == "switch"
+            and control.is_readonly
+        }
+
+        if user_input is not None:
+            return self.async_create_entry(
+                title="",
+                data=self._options_with(
+                    inverted_binary_sensors=sorted(
+                        user_input[CONF_INVERTED_BINARY_SENSORS]
+                    )
+                ),
+            )
+
+        inverted = [
+            key
+            for key in self._current_inverted_binary_sensors()
+            if key in binary_controls
+        ]
+        return self.async_show_form(
+            step_id="invert_binary_sensors",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_INVERTED_BINARY_SENSORS, default=inverted
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=_select_options(binary_controls), multiple=True
+                        )
+                    )
+                }
+            ),
+            errors=errors,
         )
 
     async def async_step_connection(self, user_input: dict[str, Any] | None = None):
@@ -600,6 +646,9 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             self._config_entry.data.get(CONF_SELECTED_CONTROLS, []),
         )
 
+    def _current_inverted_binary_sensors(self) -> list[str]:
+        return self._config_entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
+
     def _current_groups(self) -> dict[str, dict[str, Any]]:
         groups = {}
         for key, value in self._config_entry.options.get(CONF_DEVICE_GROUPS, {}).items():
@@ -614,11 +663,17 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
     def _options_with(
         self,
         selected_controls: list[str] | None = None,
+        inverted_binary_sensors: list[str] | None = None,
         device_groups: dict[str, dict[str, Any]] | None = None,
         show_system_devices: bool | None = None,
         connection: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         selected = selected_controls if selected_controls is not None else self._current_selected_controls()
+        inverted = (
+            inverted_binary_sensors
+            if inverted_binary_sensors is not None
+            else self._current_inverted_binary_sensors()
+        )
         groups = device_groups if device_groups is not None else self._current_groups()
         show_system = show_system_devices if show_system_devices is not None else self._show_system_devices()
         controls = {
@@ -635,6 +690,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 controls[key] = existing_controls[key]
         return {
             CONF_SELECTED_CONTROLS: selected,
+            CONF_INVERTED_BINARY_SENSORS: inverted,
             "discovered_controls": controls,
             CONF_DEVICE_GROUPS: groups,
             CONF_SHOW_SYSTEM_DEVICES: show_system,
@@ -680,6 +736,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             "connection": self._connection_options(),
             "show_system_devices": self._show_system_devices(),
             "selected_controls": self._current_selected_controls(),
+            "inverted_binary_sensors": self._current_inverted_binary_sensors(),
             "device_groups": self._current_groups(),
             "discovered_controls": self._config_entry.options.get(
                 "discovered_controls",
@@ -695,6 +752,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
 
         connection = payload.get("connection") or {}
         selected = [str(key) for key in payload.get("selected_controls", [])]
+        inverted = [str(key) for key in payload.get("inverted_binary_sensors", [])]
         groups = payload.get("device_groups") or {}
         discovered = payload.get("discovered_controls") or {}
         if not isinstance(groups, dict) or not isinstance(discovered, dict):
@@ -702,6 +760,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
 
         return {
             CONF_SELECTED_CONTROLS: selected,
+            CONF_INVERTED_BINARY_SENSORS: inverted,
             "discovered_controls": discovered,
             CONF_DEVICE_GROUPS: groups,
             CONF_SHOW_SYSTEM_DEVICES: bool(payload.get("show_system_devices", DEFAULT_SHOW_SYSTEM_DEVICES)),

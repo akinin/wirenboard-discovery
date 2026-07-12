@@ -37,7 +37,7 @@
         "title": "Устройства Wiren Board",
         "description": "Выберите действие.",
         "menu_options": {
-          "controls": "Выбрать элементы",
+          "invert_binary_sensors": "Инвертировать бинарные сенсоры",
           "connection": "Подключение",
           "add_group": "Добавить или обновить группу",
           "edit_group": "Редактировать группу",
@@ -45,6 +45,13 @@
           "export_config": "Экспорт конфигурации",
           "import_config": "Импорт конфигурации",
           "diagnostics": "Диагностика"
+        }
+      },
+      "invert_binary_sensors": {
+        "title": "Инверсия бинарных сенсоров",
+        "description": "Выберите бинарные сенсоры, для которых состояния включено и выключено должны поменяться местами.",
+        "data": {
+          "inverted_binary_sensors": "Инвертированные сенсоры"
         }
       },
       "controls": {

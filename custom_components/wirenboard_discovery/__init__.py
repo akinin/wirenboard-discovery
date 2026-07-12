@@ -18,6 +18,7 @@ from .const import (
     ATTR_MESSAGE,
     ATTR_PHONE,
     CONF_DEVICE_GROUPS,
+    CONF_INVERTED_BINARY_SENSORS,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
     DOMAIN,
@@ -104,6 +105,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "controls": controls,
         "groups": groups,
         "hidden_controls": composite_control_keys(groups),
+        "inverted_binary_sensors": set(
+            entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
+        ),
     }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))

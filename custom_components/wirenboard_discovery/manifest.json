@@ -7,7 +7,7 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/akinin/wirenboard-discovery/issues",
   "requirements": ["paho-mqtt==2.1.0"],
-  "version": "0.10.5",
+  "version": "0.11.0",
   "zeroconf": [
     {
       "type": "_workstation._tcp.local."

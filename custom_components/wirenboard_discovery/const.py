@@ -9,6 +9,7 @@ ATTR_MESSAGE = "message"
 
 CONF_PREFIX = "prefix"
 CONF_SELECTED_CONTROLS = "selected_controls"
+CONF_INVERTED_BINARY_SENSORS = "inverted_binary_sensors"
 CONF_DEVICE_GROUPS = "device_groups"
 CONF_SHOW_SYSTEM_DEVICES = "show_system_devices"
 

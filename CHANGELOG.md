@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+- Added per-entity state inversion for read-only binary sensors.
+- Removed "Select items" from the options menu to prevent removed entities from leaving orphaned Home Assistant devices.
+- Included binary sensor inversion settings in configuration export and import.
+
 ## 0.10.5
 
 - Wait for the Wiren Board MQTT connection to be fully ready during Home Assistant startup, preventing the first SMS action from being lost after a restart.

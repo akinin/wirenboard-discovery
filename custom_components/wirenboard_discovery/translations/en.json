@@ -37,7 +37,7 @@
         "title": "Wiren Board devices",
         "description": "Choose an action.",
         "menu_options": {
-          "controls": "Select items",
+          "invert_binary_sensors": "Invert binary sensors",
           "connection": "Connection",
           "add_group": "Add or update group",
           "edit_group": "Edit group",
@@ -45,6 +45,13 @@
           "export_config": "Export configuration",
           "import_config": "Import configuration",
           "diagnostics": "Diagnostics"
+        }
+      },
+      "invert_binary_sensors": {
+        "title": "Binary sensor inversion",
+        "description": "Select binary sensors whose on and off states should be reversed.",
+        "data": {
+          "inverted_binary_sensors": "Inverted sensors"
         }
       },
       "controls": {
