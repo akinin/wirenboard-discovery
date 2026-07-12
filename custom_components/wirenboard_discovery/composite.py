@@ -12,6 +12,8 @@ TYPE_COVER_GATE = "cover_gate"
 TYPE_COVER = "cover"
 TYPE_THERMOSTAT = "thermostat"
 TYPE_AC = "ac"
+TYPE_GAS = "gas"
+TYPE_WATER = "water"
 
 COMPOSITE_TYPES = {TYPE_COVER_GATE, TYPE_COVER, TYPE_THERMOSTAT, TYPE_AC}
 COVER_TYPES = {TYPE_COVER_GATE, TYPE_COVER}
@@ -39,6 +41,10 @@ def default_group_type(group_id: str, group: dict[str, Any]) -> str:
         return TYPE_AC
     if "термостат" in text or "thermostat" in text:
         return TYPE_THERMOSTAT
+    if "газ" in text or "gas" in text:
+        return TYPE_GAS
+    if "вод" in text or "water" in text:
+        return TYPE_WATER
     return TYPE_DEVICE
 
 

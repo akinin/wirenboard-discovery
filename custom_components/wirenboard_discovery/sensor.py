@@ -47,6 +47,7 @@ class WBSensor(WBEntity, SensorEntity):
 
 def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
     control_type = (control.control_type or "").lower()
+    configured_type = str(control.meta.get("ha_device_type") or "").lower()
     units = control.units or control.meta.get("units") or control.meta.get("unit")
     unit = _display_unit(str(units)) if units is not None else None
     unit_key = _normalize_unit(unit)
@@ -66,7 +67,12 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         "gas": {"device_class": "gas", "unit": unit or "m³"},
         "water": {"device_class": "water", "unit": unit or "m³"},
     }
-    metadata = mapping.get(control_type) or _metadata_from_unit(unit_key, unit, text) or {"device_class": None, "unit": unit}
+    metadata = (
+        mapping.get(configured_type)
+        or mapping.get(control_type)
+        or _metadata_from_unit(unit_key, unit, text)
+        or {"device_class": None, "unit": unit}
+    )
     state_class = "measurement" if _can_float(control.value) else None
     if metadata.get("device_class") in {"energy", "gas", "water"} and state_class:
         state_class = "total_increasing"

@@ -13,7 +13,17 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 from homeassistant.helpers import entity_registry as er
 
-from .composite import TYPE_AC, TYPE_COVER, TYPE_COVER_GATE, TYPE_DEVICE, TYPE_THERMOSTAT, default_group_type
+from .composite import (
+    COMPOSITE_TYPES,
+    TYPE_AC,
+    TYPE_COVER,
+    TYPE_COVER_GATE,
+    TYPE_DEVICE,
+    TYPE_GAS,
+    TYPE_THERMOSTAT,
+    TYPE_WATER,
+    default_group_type,
+)
 from .const import (
     CONF_DEVICE_GROUPS,
     CONF_INVERTED_BINARY_SENSORS,
@@ -394,7 +404,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 selected.update(user_input["group_controls"])
                 removed_controls = set(self._current_removed_controls())
                 removed_controls.difference_update(user_input["group_controls"])
-                if user_input["group_type"] != TYPE_DEVICE:
+                if user_input["group_type"] in COMPOSITE_TYPES:
                     self._pending_group_id = group_id
                     self._pending_group = groups[group_id]
                     self._pending_old_group_id = None
@@ -515,7 +525,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                         removed=old_controls - new_controls,
                         replacing_group_id=group_id,
                     )
-                    if user_input["group_type"] != TYPE_DEVICE:
+                    if user_input["group_type"] in COMPOSITE_TYPES:
                         self._pending_old_group_id = group_id
                         self._pending_group_id = new_group_id
                         self._pending_group = group_data
@@ -1043,6 +1053,8 @@ def _group_type_options() -> list[selector.SelectOptionDict]:
         selector.SelectOptionDict(value=TYPE_COVER, label="Cover / Шторы, роллеты"),
         selector.SelectOptionDict(value=TYPE_THERMOSTAT, label="Thermostat / Термостат"),
         selector.SelectOptionDict(value=TYPE_AC, label="AC / Кондиционер"),
+        selector.SelectOptionDict(value=TYPE_GAS, label="Gas meter / Счётчик газа"),
+        selector.SelectOptionDict(value=TYPE_WATER, label="Water meter / Счётчик воды"),
     ]
 
 

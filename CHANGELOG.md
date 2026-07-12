@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.12.2
+
+- Added "Gas meter" and "Water meter" to the existing device type selector used when creating or editing a group.
+- Apply the selected group type to its numeric volume sensor without a separate configuration menu.
+
 ## 0.12.1
 
 - Added `gas` and `water` to the existing Wiren Board sensor type mapping and removed the separate meter configuration menu.

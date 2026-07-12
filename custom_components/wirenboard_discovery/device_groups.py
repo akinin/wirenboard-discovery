@@ -27,6 +27,7 @@ def apply_device_groups(
 
     for group_id, group in config.items():
         name = group.get("name") or group_id
+        device_type = str(group.get("type") or "device")
         patterns = group.get("controls") or []
         if isinstance(patterns, str):
             patterns = [patterns]
@@ -34,6 +35,7 @@ def apply_device_groups(
             if _matches_any(key, patterns):
                 control.ha_device_id = f"group:{group_id}"
                 control.ha_device_name = str(name)
+                control.meta["ha_device_type"] = device_type
 
 
 def _load_groups_config(hass: HomeAssistant) -> dict[str, dict[str, Any]]:
