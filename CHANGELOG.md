@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1
+
+- Reset the SMS command control before publishing so identical consecutive messages trigger `whenChanged` reliably.
+
 ## 0.10.0
 
 - Added the `wirenboard_discovery.send_sms` action using the existing Wiren Board MQTT connection.
