@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0
+
+- Added Home Assistant `select` entities for writable Wiren Board controls with enum metadata.
+- Display localized enum titles and publish the corresponding enum key when an option is selected.
+
 ## 0.12.2
 
 - Added "Gas meter" and "Water meter" to the existing device type selector used when creating or editing a group.

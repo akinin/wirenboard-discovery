@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_number(control: WBControl) -> bool:
-    return not control.is_readonly and (
+    return not control.is_readonly and not control.meta.get("enum") and (
         control.control_type == "range"
         or (control.control_type == "value" and _can_float(control.value))
     )
