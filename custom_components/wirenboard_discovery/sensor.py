@@ -53,6 +53,12 @@ class WBSensor(WBEntity, SensorEntity):
 
 
 def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
+    # Enum values are descriptive states, even when their parent logical group
+    # is a gas/water meter. Giving them a numeric device class makes Home
+    # Assistant try to parse localized labels such as "Хорошее" as numbers.
+    if control.meta.get("enum"):
+        return {"device_class": None, "unit": None, "state_class": None}
+
     control_type = (control.control_type or "").lower()
     configured_type = str(control.meta.get("ha_device_type") or "").lower()
     units = control.units or control.meta.get("units") or control.meta.get("unit")

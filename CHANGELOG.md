@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.1
+
+- Create a missing target device when existing entities are moved into a new logical group.
+- Preserve entity IDs while regrouping controls that were already registered in Home Assistant.
+- Keep read-only enum status sensors non-numeric inside gas and water meter groups.
+
 ## 0.14.0
 
 - Normalize common Wiren Board units (`deg C`, `%, RH`, `m^3`) to canonical Home Assistant units.
