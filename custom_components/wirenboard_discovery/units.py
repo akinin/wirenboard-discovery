@@ -1,6 +1,17 @@
 from __future__ import annotations
 
 
+def numeric_state_class(value: object, has_enum: bool = False) -> str | None:
+    """Return a measurement state class for numeric non-enum controls."""
+    if has_enum:
+        return None
+    try:
+        float(value)
+    except (TypeError, ValueError):
+        return None
+    return "measurement"
+
+
 def display_unit(unit: str | None) -> str | None:
     """Convert common Wiren Board unit spellings to HA canonical units."""
     if unit is None:

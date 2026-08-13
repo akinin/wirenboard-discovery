@@ -13,7 +13,7 @@ from .entity import WBEntity
 from .models import WBControl, localized_title
 from .sms import SMS_FIELDS
 from .sms_entity import WBSmsEntity
-from .units import display_unit, normalized_unit
+from .units import display_unit, normalized_unit, numeric_state_class
 from .wb_mqtt import WBRuntimeClient
 
 
@@ -140,13 +140,9 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         or _metadata_from_unit(unit_key, unit, text)
         or {"device_class": None, "unit": unit}
     )
-    state_class = (
-        "measurement"
-        if _can_float(control.value)
-        and not control.meta.get("enum")
-        and (metadata.get("device_class") or metadata.get("unit"))
-        else None
-    )
+    # Unitless numeric channels (for example WB-MSW motion levels and modem
+    # signal quality) are still measurements and may have recorder history.
+    state_class = numeric_state_class(control.value, bool(control.meta.get("enum")))
     if metadata.get("device_class") in {"energy", "gas", "water"} and state_class:
         state_class = "total_increasing"
     return {
@@ -186,11 +182,3 @@ def _metadata_from_unit(unit_key: str | None, unit: str | None, text: str) -> di
     if unit_key in {"var", "kvar"}:
         return {"device_class": "reactive_power", "unit": unit or "var"}
     return None
-
-
-def _can_float(value: str | None) -> bool:
-    try:
-        float(value)
-    except (TypeError, ValueError):
-        return False
-    return True

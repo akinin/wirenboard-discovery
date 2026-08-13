@@ -52,6 +52,12 @@ class DisplayUnitTest(unittest.TestCase):
         self.assertEqual(units.display_unit(" kWh "), "kWh")
         self.assertIsNone(units.display_unit(None))
 
+    def test_unitless_numeric_values_remain_measurements(self) -> None:
+        self.assertEqual(units.numeric_state_class("20"), "measurement")
+        self.assertEqual(units.numeric_state_class(48), "measurement")
+        self.assertIsNone(units.numeric_state_class("online"))
+        self.assertIsNone(units.numeric_state_class("1", has_enum=True))
+
 
 class SmsAttemptTrackerTest(unittest.TestCase):
     def test_collects_and_classifies_attempt(self) -> None:
