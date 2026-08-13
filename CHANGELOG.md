@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.0
+
+- Add a dedicated SMS Gateway device without exposing raw `sms_sender` controls.
+- Add diagnostic entities for the required WB script and the last SMS attempt.
+- Emit Home Assistant `sent` and `failed` SMS events from confirmed Wiren Board results.
+- Create a persistent Home Assistant notification when Wiren Board reports an SMS error.
+
 ## 0.14.1
 
 - Create a missing target device when existing entities are moved into a new logical group.

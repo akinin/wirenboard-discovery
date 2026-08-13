@@ -175,5 +175,39 @@
       "invalid_import": "Could not read import JSON.",
       "no_groups": "No groups have been created yet."
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "sms_script_available": {
+        "name": "SMS script available"
+      }
+    },
+    "sensor": {
+      "sms_last_sent_time": {
+        "name": "Last sent time"
+      },
+      "sms_last_message_text": {
+        "name": "Last message"
+      },
+      "sms_last_recipient_number": {
+        "name": "Last recipient"
+      },
+      "sms_last_result": {
+        "name": "Last result"
+      }
+    },
+    "event": {
+      "sms_delivery": {
+        "name": "SMS delivery",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "sent": "Sent",
+              "failed": "Failed"
+            }
+          }
+        }
+      }
+    }
   }
 }

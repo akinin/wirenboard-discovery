@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity
+from datetime import datetime
+
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import WBEntity
 from .models import WBControl, localized_title
+from .sms import SMS_FIELDS
+from .sms_entity import WBSmsEntity
 from .units import display_unit, normalized_unit
 from .wb_mqtt import WBRuntimeClient
 
@@ -17,15 +22,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     client = data["client"]
     controls = data["controls"]
     hidden = data.get("hidden_controls", set())
-    async_add_entities(
+    entities = [
         WBSensor(client, control)
         for control in controls.values()
         if control.key not in hidden and _is_sensor(control)
-    )
+    ]
+    entities.extend(WBSmsDiagnosticSensor(entry, client, field) for field in SMS_FIELDS)
+    async_add_entities(entities)
 
 
 def _is_sensor(control: WBControl) -> bool:
-    return control.control_type not in {"switch", "range"} and control.is_readonly
+    return (
+        control.device_id != "sms_sender"
+        and control.control_type not in {"switch", "range"}
+        and control.is_readonly
+    )
 
 
 class WBSensor(WBEntity, SensorEntity):
@@ -50,6 +61,49 @@ class WBSensor(WBEntity, SensorEntity):
             return float(self._value)
         except ValueError:
             return self._value
+
+
+class WBSmsDiagnosticSensor(WBSmsEntity, SensorEntity):
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        client: WBRuntimeClient,
+        field: str,
+    ) -> None:
+        super().__init__(entry, client, field)
+        self._field = field
+        self._value: str | None = None
+        self._attr_translation_key = f"sms_{field}"
+        if field == "last_sent_time":
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    async def async_added_to_hass(self) -> None:
+        self._client.subscribe_value(f"sms_sender/{self._field}", self._handle_value)
+
+    @property
+    def native_value(self):
+        if not self._value:
+            return None
+        if self._field == "last_sent_time":
+            try:
+                return datetime.fromisoformat(self._value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+        if len(self._value) <= 250:
+            return self._value
+        return f"{self._value[:249]}…"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str] | None:
+        if self._value and len(self._value) > 250:
+            return {"full_value": self._value}
+        return None
+
+    def _handle_value(self, value: str | None) -> None:
+        self._value = None if value is None else str(value).strip()
+        self.async_write_ha_state()
 
 
 def _sensor_metadata(control: WBControl) -> dict[str, str | None]:

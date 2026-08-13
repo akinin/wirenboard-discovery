@@ -24,7 +24,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def _is_text(control: WBControl) -> bool:
-    return control.control_type == "text" and not control.is_readonly and not control.meta.get("enum")
+    return (
+        control.device_id != "sms_sender"
+        and control.control_type == "text"
+        and not control.is_readonly
+        and not control.meta.get("enum")
+    )
 
 
 class WBText(WBEntity, TextEntity):

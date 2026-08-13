@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import WBEntity
 from .models import WBControl
+from .sms import SMS_FIELDS, SmsAttemptTracker
+from .sms_entity import WBSmsEntity
 from .wb_mqtt import WBRuntimeClient
 
 
@@ -17,15 +20,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     controls = data["controls"]
     hidden = data.get("hidden_controls", set())
     inverted = data.get("inverted_binary_sensors", set())
-    async_add_entities(
+    entities = [
         WBBinarySensor(client, control, control.key in inverted)
         for control in controls.values()
         if control.key not in hidden and _is_binary_sensor(control)
-    )
+    ]
+    entities.append(WBSmsScriptAvailable(entry, client))
+    async_add_entities(entities)
 
 
 def _is_binary_sensor(control: WBControl) -> bool:
-    return control.control_type == "switch" and control.is_readonly
+    return (
+        control.device_id != "sms_sender"
+        and control.control_type == "switch"
+        and control.is_readonly
+    )
 
 
 class WBBinarySensor(WBEntity, BinarySensorEntity):
@@ -40,6 +49,33 @@ class WBBinarySensor(WBEntity, BinarySensorEntity):
             return None
         is_on = str(self._value).strip().lower() in {"1", "true", "on"}
         return not is_on if self._inverted else is_on
+
+
+class WBSmsScriptAvailable(WBSmsEntity, BinarySensorEntity):
+    _attr_translation_key = "sms_script_available"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: ConfigEntry, client: WBRuntimeClient) -> None:
+        super().__init__(entry, client, "script_available")
+        self._tracker = SmsAttemptTracker()
+
+    async def async_added_to_hass(self) -> None:
+        for field in SMS_FIELDS:
+            self._client.subscribe_value(
+                f"sms_sender/{field}",
+                lambda value, current_field=field: self._handle_value(
+                    current_field, value
+                ),
+            )
+
+    @property
+    def is_on(self) -> bool:
+        return self._tracker.script_controls_available
+
+    def _handle_value(self, field: str, value: str | None) -> None:
+        self._tracker.update(field, value)
+        self.async_write_ha_state()
 
 
 def _binary_device_class(control: WBControl) -> str | None:
