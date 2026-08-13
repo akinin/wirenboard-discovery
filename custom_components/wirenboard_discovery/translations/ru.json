@@ -175,5 +175,39 @@
       "invalid_import": "Не удалось прочитать JSON импорта.",
       "no_groups": "Группы ещё не созданы."
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "sms_script_available": {
+        "name": "Скрипт SMS доступен"
+      }
+    },
+    "sensor": {
+      "sms_last_sent_time": {
+        "name": "Время последней отправки"
+      },
+      "sms_last_message_text": {
+        "name": "Последнее сообщение"
+      },
+      "sms_last_recipient_number": {
+        "name": "Последний получатель"
+      },
+      "sms_last_result": {
+        "name": "Последний результат"
+      }
+    },
+    "event": {
+      "sms_delivery": {
+        "name": "Отправка SMS",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "sent": "Отправлено",
+              "failed": "Ошибка"
+            }
+          }
+        }
+      }
+    }
   }
 }
