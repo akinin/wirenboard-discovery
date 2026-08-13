@@ -7,7 +7,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import WBEntity
-from .models import WBControl
+from .models import WBControl, localized_title
+from .units import display_unit, normalized_unit
 from .wb_mqtt import WBRuntimeClient
 
 
@@ -30,6 +31,10 @@ def _is_sensor(control: WBControl) -> bool:
 class WBSensor(WBEntity, SensorEntity):
     def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
+        self._enum = {
+            str(key): localized_title(title) or str(key)
+            for key, title in (control.meta.get("enum") or {}).items()
+        }
         metadata = _sensor_metadata(control)
         self._attr_device_class = metadata.get("device_class")
         self._attr_state_class = metadata.get("state_class")
@@ -37,8 +42,10 @@ class WBSensor(WBEntity, SensorEntity):
 
     @property
     def native_value(self):
-        if self._value is None:
+        if self._value is None or str(self._value).strip() == "":
             return None
+        if self._enum:
+            return self._enum.get(str(self._value), str(self._value))
         try:
             return float(self._value)
         except ValueError:
@@ -49,8 +56,8 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
     control_type = (control.control_type or "").lower()
     configured_type = str(control.meta.get("ha_device_type") or "").lower()
     units = control.units or control.meta.get("units") or control.meta.get("unit")
-    unit = _display_unit(str(units)) if units is not None else None
-    unit_key = _normalize_unit(unit)
+    unit = display_unit(str(units)) if units is not None else None
+    unit_key = normalized_unit(unit)
     text = f"{control.control_id} {control.control_name or ''}".lower()
 
     mapping = {
@@ -59,7 +66,7 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         "rel_humidity": {"device_class": "humidity", "unit": unit or "%"},
         "humidity": {"device_class": "humidity", "unit": unit or "%"},
         "lux": {"device_class": "illuminance", "unit": unit or "lx"},
-        "sound_level": {"device_class": "sound_pressure", "unit": unit or "dB"},
+        "sound_level": {"device_class": "sound_pressure", "unit": unit or "dBA"},
         "power": {"device_class": "power", "unit": unit or "W"},
         "power_consumption": {"device_class": "energy", "unit": unit or "kWh"},
         "current": {"device_class": "current", "unit": unit or "A"},
@@ -73,7 +80,13 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         or _metadata_from_unit(unit_key, unit, text)
         or {"device_class": None, "unit": unit}
     )
-    state_class = "measurement" if _can_float(control.value) else None
+    state_class = (
+        "measurement"
+        if _can_float(control.value)
+        and not control.meta.get("enum")
+        and (metadata.get("device_class") or metadata.get("unit"))
+        else None
+    )
     if metadata.get("device_class") in {"energy", "gas", "water"} and state_class:
         state_class = "total_increasing"
     return {
@@ -97,10 +110,12 @@ def _metadata_from_unit(unit_key: str | None, unit: str | None, text: str) -> di
     if unit_key in {"lx", "lux"}:
         return {"device_class": "illuminance", "unit": unit or "lx"}
     if unit_key in {"db", "dba"}:
-        return {"device_class": "sound_pressure", "unit": unit or "dB"}
+        return {"device_class": "sound_pressure", "unit": unit or "dBA"}
     if unit_key in {"c", "°c"}:
         return {"device_class": "temperature", "unit": unit or "°C"}
     if unit_key == "%":
+        if any(word in text for word in {"battery", "percentage", "батар", "заряд"}):
+            return {"device_class": "battery", "unit": unit or "%"}
         if any(word in text for word in {"humidity", "влажн"}):
             return {"device_class": "humidity", "unit": unit or "%"}
         if any(word in text for word in {"power factor", "cos", "pf", "коэффициент мощности"}):
@@ -111,19 +126,6 @@ def _metadata_from_unit(unit_key: str | None, unit: str | None, text: str) -> di
     if unit_key in {"var", "kvar"}:
         return {"device_class": "reactive_power", "unit": unit or "var"}
     return None
-
-
-def _normalize_unit(unit: str | None) -> str | None:
-    if unit is None:
-        return None
-    return _display_unit(unit).strip().replace("℃", "°C").lower()
-
-
-def _display_unit(unit: str) -> str:
-    normalized = unit.strip()
-    if normalized.lower() in {"m^3", "m3", "м^3", "м3"}:
-        return "m³"
-    return normalized
 
 
 def _can_float(value: str | None) -> bool:

@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from dataclasses import replace
 from typing import Optional
 
+from paho.mqtt import client as mqtt
+
 from .const import DISCOVERY_SECONDS
 from .models import WBControl, localized_title, normalize_topic_prefix, parse_bool
 
@@ -148,8 +150,6 @@ def discover_snapshot(
         "parse_errors": 0,
     }
 
-    from paho.mqtt import client as mqtt
-
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     if username:
         client.username_pw_set(username, password)
@@ -222,8 +222,6 @@ class WBRuntimeClient:
         self._parser = WBTopicParser(prefix)
         self._callbacks: dict[str, list[ValueCallback]] = {}
         self._connected = threading.Event()
-        from paho.mqtt import client as mqtt
-
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if username:
             self._client.username_pw_set(username, password)

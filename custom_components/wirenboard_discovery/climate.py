@@ -8,7 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .composite import CLIMATE_TYPES, TYPE_AC, control_by_role, group_device_info, group_icon, group_type
 from .const import DOMAIN
-from .models import WBControl
+from .models import WBControl, localized_title
 from .wb_mqtt import WBRuntimeClient
 
 try:
@@ -54,15 +54,20 @@ class WBClimate(ClimateEntity):
         self._power_value = self._value(self._power)
         self._mode_value = self._value(self._mode)
         self._fan_value = self._value(self._fan)
+        self._fan_option_by_key = _enum_options(self._fan)
+        self._fan_key_by_option = {
+            option: key for key, option in self._fan_option_by_key.items()
+        }
         self._attr_name = str(group.get("name") or group_id)
         self._attr_unique_id = f"wb_group_{group_id}_climate"
         self._attr_device_info = group_device_info(group_id, group)
         self._attr_icon = group_icon(group)
         self._attr_supported_features = _climate_features(
             has_target=self._target_temperature is not None,
-            has_fan=self._fan is not None,
+            has_fan=bool(self._fan_option_by_key),
         )
         self._attr_hvac_modes = _hvac_modes(group_type(group))
+        self._attr_fan_modes = list(self._fan_key_by_option) or None
 
     async def async_added_to_hass(self) -> None:
         if self._current_temperature:
@@ -103,7 +108,11 @@ class WBClimate(ClimateEntity):
 
     @property
     def fan_mode(self) -> str | None:
-        return self._fan_value
+        if self._fan_value is None:
+            return None
+        return self._fan_option_by_key.get(
+            str(self._fan_value), str(self._fan_value)
+        )
 
     async def async_set_temperature(self, **kwargs) -> None:
         if self._target_temperature is None or "temperature" not in kwargs:
@@ -124,7 +133,10 @@ class WBClimate(ClimateEntity):
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         if self._fan is not None:
-            self._client.publish_control(self._fan, fan_mode)
+            key = self._fan_key_by_option.get(fan_mode)
+            if key is None:
+                raise ValueError(f"Unknown Wiren Board fan mode: {fan_mode}")
+            self._client.publish_control(self._fan, key)
 
     def _handle_current_temperature(self, value: str | None) -> None:
         self._current_temperature_value = value
@@ -190,3 +202,12 @@ def _float(value: str | None) -> float | None:
 
 def _normalize(value: str | None) -> str:
     return str(value or "").strip().lower()
+
+
+def _enum_options(control: WBControl | None) -> dict[str, str]:
+    if control is None or not isinstance(control.meta.get("enum"), dict):
+        return {}
+    return {
+        str(key): localized_title(title) or str(key)
+        for key, title in control.meta["enum"].items()
+    }
