@@ -8,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .entity import WBEntity
 from .models import WBControl
+from .units import display_unit
 from .wb_mqtt import WBRuntimeClient
 
 
@@ -35,7 +36,9 @@ class WBNumber(WBEntity, NumberEntity):
         super().__init__(client, control)
         self._attr_native_min_value = _float_meta(control, "min", 0)
         self._attr_native_max_value = _float_meta(control, "max", 100)
-        self._attr_native_unit_of_measurement = control.units or control.meta.get("units") or control.meta.get("unit")
+        self._attr_native_unit_of_measurement = display_unit(
+            control.units or control.meta.get("units") or control.meta.get("unit")
+        )
 
     @property
     def native_value(self) -> float | None:

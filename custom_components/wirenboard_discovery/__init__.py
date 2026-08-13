@@ -28,7 +28,7 @@ from .const import (
     PLATFORMS,
     SERVICE_SEND_SMS,
 )
-from .device_groups import apply_device_groups
+from .device_groups import async_apply_device_groups
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
@@ -102,7 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     controls = _entry_controls(entry)
     groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
-    apply_device_groups(hass, controls, groups)
+    await async_apply_device_groups(hass, controls, groups)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
         "sms_lock": asyncio.Lock(),
@@ -114,6 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _reconcile_control_devices(hass, entry, controls)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
@@ -137,6 +138,45 @@ def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> No
         for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id)
     }
     for device_id in candidate_devices:
+        device = device_registry.async_get(device_id)
+        device_entities = er.async_entries_for_device(
+            entity_registry, device_id, include_disabled_entities=True
+        )
+        if device and entry.entry_id in device.config_entries and not device_entities:
+            device_registry.async_remove_device(device_id)
+
+
+def _reconcile_control_devices(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    controls: dict[str, WBControl],
+) -> None:
+    """Move existing entities when a control joins or leaves a logical group."""
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+    entries = {
+        entity.unique_id: entity
+        for entity in er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    }
+    previous_devices: set[str] = set()
+
+    for control in controls.values():
+        entity = entries.get(control.unique_id)
+        if entity is None:
+            continue
+        device_identifier = control.ha_device_id or control.device_id
+        expected_device = device_registry.async_get_device(
+            identifiers={(DOMAIN, device_identifier)}
+        )
+        if expected_device is None or entity.device_id == expected_device.id:
+            continue
+        if entity.device_id:
+            previous_devices.add(entity.device_id)
+        entity_registry.async_update_entity(
+            entity.entity_id, device_id=expected_device.id
+        )
+
+    for device_id in previous_devices:
         device = device_registry.async_get(device_id)
         device_entities = er.async_entries_for_device(
             entity_registry, device_id, include_disabled_entities=True

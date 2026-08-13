@@ -14,12 +14,12 @@ _LOGGER = logging.getLogger(__name__)
 GROUPS_FILE = "wirenboard_discovery.yaml"
 
 
-def apply_device_groups(
+async def async_apply_device_groups(
     hass: HomeAssistant,
     controls: dict[str, WBControl],
     entry_groups: dict[str, dict[str, Any]] | None = None,
 ) -> None:
-    config = _load_groups_config(hass)
+    config = await hass.async_add_executor_job(_load_groups_config, hass)
     if entry_groups:
         config.update(entry_groups)
     if not config:

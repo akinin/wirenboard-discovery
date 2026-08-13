@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0
+
+- Normalize common Wiren Board units (`deg C`, `%, RH`, `m^3`) to canonical Home Assistant units.
+- Use `dBA` for WB sound level controls that do not publish an explicit unit and recognize battery percentage sensors.
+- Display localized labels for read-only enum controls instead of their numeric keys.
+- Ignore blank numeric MQTT values instead of raising entity state errors.
+- Provide valid localized fan modes for composite climate entities and publish the corresponding enum keys.
+- Move existing entities when controls join or leave logical device groups and remove empty former devices.
+- Move YAML file reads and MQTT dependency loading out of the Home Assistant event loop.
+- Avoid long-term statistics for untyped numeric status and enum controls.
+
 ## 0.13.0
 
 - Added Home Assistant `select` entities for writable Wiren Board controls with enum metadata.
