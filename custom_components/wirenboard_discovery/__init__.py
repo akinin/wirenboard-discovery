@@ -168,7 +168,18 @@ def _reconcile_control_devices(
         expected_device = device_registry.async_get_device(
             identifiers={(DOMAIN, device_identifier)}
         )
-        if expected_device is None or entity.device_id == expected_device.id:
+        if expected_device is None:
+            expected_device = device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={(DOMAIN, device_identifier)},
+                name=(
+                    control.ha_device_name
+                    or control.device_name
+                    or control.device_id
+                ),
+                manufacturer="Wiren Board",
+            )
+        if entity.device_id == expected_device.id:
             continue
         if entity.device_id:
             previous_devices.add(entity.device_id)
