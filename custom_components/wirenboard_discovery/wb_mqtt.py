@@ -20,6 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 
 ValueCallback = Callable[[Optional[str]], None]
 MetaCallback = Callable[[WBControl], None]
+DeviceMetaCallback = Callable[[dict[str, object]], None]
+ConnectionCallback = Callable[[bool], None]
+UnsubscribeCallback = Callable[[], None]
 
 
 class WBDiscoveryError(Exception):
@@ -40,6 +43,7 @@ class WBTopicParser:
     def __init__(self, prefix: str) -> None:
         self.prefix = normalize_topic_prefix(prefix)
         self.devices: dict[str, str] = {}
+        self.device_meta: dict[str, dict[str, object]] = {}
         self.controls: dict[str, WBControl] = {}
 
     def parse_message(self, topic: str, payload: str) -> None:
@@ -88,15 +92,19 @@ class WBTopicParser:
         if len(parts) == 3:
             meta = _json_or_text(payload)
             if isinstance(meta, dict):
+                self.device_meta.setdefault(device_id, {}).update(meta)
                 name = localized_title(meta.get("title")) or localized_title(meta.get("name"))
                 if name:
                     self.devices[device_id] = name
                     self._apply_device_name(device_id, name)
             return
 
-        if len(parts) == 4 and parts[3] == "name":
-            self.devices[device_id] = payload
-            self._apply_device_name(device_id, payload)
+        if len(parts) == 4:
+            key = parts[3]
+            self.device_meta.setdefault(device_id, {})[key] = payload
+            if key == "name":
+                self.devices[device_id] = payload
+                self._apply_device_name(device_id, payload)
 
     def _apply_control_meta(self, control: WBControl, meta: object) -> None:
         if not isinstance(meta, dict):
@@ -223,6 +231,8 @@ class WBRuntimeClient:
         self._parser = WBTopicParser(prefix)
         self._callbacks: dict[str, list[ValueCallback]] = {}
         self._meta_callbacks: dict[str, list[MetaCallback]] = {}
+        self._device_meta_callbacks: dict[str, list[DeviceMetaCallback]] = {}
+        self._connection_callbacks: list[ConnectionCallback] = []
         self._connected = threading.Event()
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if username:
@@ -235,21 +245,52 @@ class WBRuntimeClient:
     def controls(self) -> dict[str, WBControl]:
         return self._parser.controls
 
+    @property
+    def connected(self) -> bool:
+        return self._connected.is_set()
+
     async def async_start(self) -> None:
         await self._loop.run_in_executor(None, self._start)
 
     async def async_stop(self) -> None:
         await self._loop.run_in_executor(None, self._stop)
 
-    def subscribe_value(self, key: str, callback: ValueCallback) -> None:
+    def subscribe_value(
+        self, key: str, callback: ValueCallback
+    ) -> UnsubscribeCallback:
         self._callbacks.setdefault(key, []).append(callback)
         if key in self._parser.controls:
             callback(self._parser.controls[key].value)
+        return lambda: self._remove_callback(self._callbacks, key, callback)
 
-    def subscribe_meta(self, key: str, callback: MetaCallback) -> None:
+    def subscribe_meta(self, key: str, callback: MetaCallback) -> UnsubscribeCallback:
         self._meta_callbacks.setdefault(key, []).append(callback)
         if key in self._parser.controls:
             callback(self._parser.controls[key])
+        return lambda: self._remove_callback(self._meta_callbacks, key, callback)
+
+    def subscribe_device_meta(
+        self, device_id: str, callback: DeviceMetaCallback
+    ) -> UnsubscribeCallback:
+        self._device_meta_callbacks.setdefault(device_id, []).append(callback)
+        callback(self._parser.device_meta.get(device_id, {}))
+        return lambda: self._remove_callback(
+            self._device_meta_callbacks, device_id, callback
+        )
+
+    def subscribe_connection(
+        self, callback: ConnectionCallback
+    ) -> UnsubscribeCallback:
+        self._connection_callbacks.append(callback)
+        callback(self.connected)
+
+        def unsubscribe() -> None:
+            try:
+                self._connection_callbacks.remove(callback)
+            except ValueError:
+                pass
+
+        return unsubscribe
 
     def publish_control(self, control: WBControl, value: str) -> None:
         topic = self._topic_for(control, command=True)
@@ -282,15 +323,21 @@ class WBRuntimeClient:
             _LOGGER.warning("Wiren Board MQTT connection failed: %s", reason_code)
             return
         self._connected.set()
+        _LOGGER.info("Wiren Board MQTT connection is available")
         topic = f"{self._prefix.rstrip('/')}/devices/#"
         if topic.startswith("//"):
             topic = topic[1:]
         client.subscribe(topic)
+        self._notify_connection(True)
 
     def _on_disconnect(
         self, _client, _userdata, _disconnect_flags, _reason_code, _properties
     ) -> None:
+        was_connected = self._connected.is_set()
         self._connected.clear()
+        if was_connected:
+            _LOGGER.warning("Wiren Board MQTT connection was lost")
+            self._notify_connection(False)
 
     def _on_message(self, _client, _userdata, message) -> None:
         payload = message.payload.decode("utf-8", errors="replace")
@@ -307,6 +354,12 @@ class WBRuntimeClient:
             if control:
                 for callback in list(self._meta_callbacks.get(meta_key, [])):
                     self._loop.call_soon_threadsafe(callback, control)
+
+        device_id = self._device_id_from_meta_topic(message.topic)
+        if device_id:
+            meta = self._parser.device_meta.get(device_id, {})
+            for callback in list(self._device_meta_callbacks.get(device_id, [])):
+                self._loop.call_soon_threadsafe(callback, meta)
 
     def _key_from_topic(self, topic: str) -> str | None:
         normalized = self._parser._strip_prefix(topic)
@@ -325,6 +378,31 @@ class WBRuntimeClient:
         if len(parts) >= 4 and parts[0] == "devices" and parts[2] == "controls":
             return f"{parts[1]}/{parts[3]}"
         return None
+
+    def _device_id_from_meta_topic(self, topic: str) -> str | None:
+        normalized = self._parser._strip_prefix(topic)
+        if not normalized:
+            return None
+        parts = normalized.split("/")
+        if len(parts) >= 3 and parts[0] == "devices" and parts[2] == "meta":
+            return parts[1]
+        return None
+
+    def _notify_connection(self, connected: bool) -> None:
+        for callback in list(self._connection_callbacks):
+            self._loop.call_soon_threadsafe(callback, connected)
+
+    @staticmethod
+    def _remove_callback(callbacks: dict, key: str, callback: Callable) -> None:
+        registered = callbacks.get(key)
+        if not registered:
+            return
+        try:
+            registered.remove(callback)
+        except ValueError:
+            return
+        if not registered:
+            callbacks.pop(key, None)
 
     def _topic_for(self, control: WBControl, command: bool = False) -> str:
         topic = f"{self._prefix.rstrip('/')}/devices/{control.device_id}/controls/{control.control_id}"

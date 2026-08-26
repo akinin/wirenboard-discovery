@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -30,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities = [
         WBSensor(client, control)
         for control in controls.values()
-        if control.key not in hidden and _is_sensor(control)
+        if not control.is_hidden and control.key not in hidden and _is_sensor(control)
     ]
     entities.extend(WBSmsDiagnosticSensor(entry, client, field) for field in SMS_FIELDS)
     async_add_entities(entities)
@@ -64,6 +64,13 @@ class WBSensor(WBEntity, SensorEntity):
             return None
         if self._enum:
             return self._enum.get(str(self._value), str(self._value))
+        if self._control.control_type == "unixtime":
+            try:
+                return datetime.fromtimestamp(float(self._value), tz=timezone.utc)
+            except (OverflowError, TypeError, ValueError):
+                return None
+        if self._control.control_type in {"text", "w1-id"}:
+            return str(self._value)
         try:
             return float(self._value)
         except ValueError:
@@ -87,7 +94,12 @@ class WBSmsDiagnosticSensor(WBSmsEntity, SensorEntity):
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
 
     async def async_added_to_hass(self) -> None:
-        self._client.subscribe_value(f"sms_sender/{self._field}", self._handle_value)
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self._client.subscribe_value(
+                f"sms_sender/{self._field}", self._handle_value
+            )
+        )
 
     @property
     def native_value(self):
@@ -119,6 +131,14 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | bool | None]:
     # Assistant try to parse localized labels such as "Хорошее" as numbers.
     if control.meta.get("enum"):
         return {"device_class": None, "unit": None, "state_class": None}
+
+    if control.control_type == "unixtime":
+        return {
+            "device_class": "timestamp",
+            "unit": None,
+            "state_class": None,
+            "diagnostic": is_diagnostic_id(control.control_id),
+        }
 
     control_type = (control.control_type or "").lower()
     configured_type = str(control.meta.get("ha_device_type") or "").lower()

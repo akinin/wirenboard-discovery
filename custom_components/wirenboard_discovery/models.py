@@ -38,6 +38,10 @@ class WBControl:
     def is_readonly(self) -> bool:
         return self.readonly is not False
 
+    @property
+    def is_hidden(self) -> bool:
+        return parse_bool(self.meta.get("hidden")) is True
+
 
 def parse_bool(value: str | None) -> bool | None:
     if value is None:
@@ -62,3 +66,10 @@ def localized_title(value: Any) -> str | None:
     if value is None:
         return None
     return str(value)
+
+
+def has_meta_error(value: Any) -> bool:
+    """Return whether a WB MQTT meta/error payload reports an error."""
+    if value is None:
+        return False
+    return str(value).strip().lower() not in {"", "0", "false", "none", "null"}

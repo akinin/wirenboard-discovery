@@ -20,7 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(
         WBNumber(client, control)
         for control in controls.values()
-        if control.key not in hidden and _is_number(control)
+        if not control.is_hidden and control.key not in hidden and _is_number(control)
     )
 
 
@@ -36,6 +36,9 @@ class WBNumber(WBEntity, NumberEntity):
         super().__init__(client, control)
         self._attr_native_min_value = _float_meta(control, "min", 0)
         self._attr_native_max_value = _float_meta(control, "max", 100)
+        self._attr_native_step = _positive_float_meta(
+            control, "precision", _float_meta(control, "step", 1)
+        )
         self._attr_native_unit_of_measurement = display_unit(
             control.units or control.meta.get("units") or control.meta.get("unit")
         )
@@ -58,6 +61,11 @@ def _float_meta(control: WBControl, key: str, default: float) -> float:
         return float(control.meta.get(key, default))
     except (TypeError, ValueError):
         return default
+
+
+def _positive_float_meta(control: WBControl, key: str, default: float) -> float:
+    value = _float_meta(control, key, default)
+    return value if value > 0 else default
 
 
 def _can_float(value: str | None) -> bool:

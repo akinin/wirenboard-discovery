@@ -104,6 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await client.async_start()
 
     controls = await _async_entry_controls(hass, entry, data)
+    _remove_hidden_control_entries(hass, entry, controls)
     groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
     await async_apply_device_groups(hass, controls, groups)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
@@ -141,6 +142,39 @@ def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> No
         for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id)
     }
     for device_id in candidate_devices:
+        device = device_registry.async_get(device_id)
+        device_entities = er.async_entries_for_device(
+            entity_registry, device_id, include_disabled_entities=True
+        )
+        if device and entry.entry_id in device.config_entries and not device_entities:
+            device_registry.async_remove_device(device_id)
+
+
+def _remove_hidden_control_entries(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    controls: dict[str, WBControl],
+) -> None:
+    """Remove registry entries for controls marked hidden by their publisher."""
+    hidden_unique_ids = {
+        control.unique_id for control in controls.values() if control.is_hidden
+    }
+    if not hidden_unique_ids:
+        return
+
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+    affected_devices: set[str] = set()
+    for entity in list(
+        er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    ):
+        if entity.unique_id not in hidden_unique_ids:
+            continue
+        if entity.device_id:
+            affected_devices.add(entity.device_id)
+        entity_registry.async_remove(entity.entity_id)
+
+    for device_id in affected_devices:
         device = device_registry.async_get(device_id)
         device_entities = er.async_entries_for_device(
             entity_registry, device_id, include_disabled_entities=True

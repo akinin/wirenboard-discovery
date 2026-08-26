@@ -19,12 +19,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(
         WBButton(client, control)
         for control in controls.values()
-        if control.key not in hidden and _is_button(control)
+        if not control.is_hidden and control.key not in hidden and _is_button(control)
     )
 
 
 def _is_button(control: WBControl) -> bool:
-    return control.control_type == "pushbutton" and not control.is_readonly
+    return not control.is_readonly and (
+        control.control_type == "pushbutton"
+        or (
+            control.control_id.lower().startswith("cmd_")
+            and control.control_type == "wo-switch"
+        )
+    )
 
 
 class WBButton(WBEntity, ButtonEntity):

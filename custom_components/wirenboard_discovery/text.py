@@ -19,7 +19,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(
         WBText(client, control)
         for control in controls.values()
-        if control.key not in hidden and _is_text(control)
+        if not control.is_hidden and control.key not in hidden and _is_text(control)
     )
 
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.16.1
+
+- Mark entities unavailable on MQTT disconnect and device-level `meta/error`,
+  in addition to control-level errors.
+- Remove MQTT callbacks when entities unload, preventing duplicate updates
+  after integration reloads.
+- Respect the standard `hidden` metadata flag.
+- Support read-only and writable `unixtime` controls as timestamp sensors and
+  datetime entities.
+- Support `wo-switch` controls with assumed state and expose canonical
+  `cmd_*` write-only controls as buttons.
+- Apply MQTT `precision` as the native step for number entities.
+
 ## 0.16.0
 
 - Recognize canonical WB-STD-001 sensor and alarm identifiers, including the

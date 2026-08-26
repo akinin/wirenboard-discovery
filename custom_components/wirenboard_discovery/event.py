@@ -35,12 +35,15 @@ class WBSmsDeliveryEvent(WBSmsEntity, EventEntity):
         self._cancel_pending: Any = None
 
     async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
         for field in SMS_FIELDS:
-            self._client.subscribe_value(
-                f"sms_sender/{field}",
-                lambda value, current_field=field: self._handle_value(
-                    current_field, value
-                ),
+            self.async_on_remove(
+                self._client.subscribe_value(
+                    f"sms_sender/{field}",
+                    lambda value, current_field=field: self._handle_value(
+                        current_field, value
+                    ),
+                )
             )
         baseline = self._tracker.pending_attempt()
         if baseline is not None:

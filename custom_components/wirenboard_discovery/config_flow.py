@@ -284,8 +284,9 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             key: control
             for key, control in self._controls.items()
             if key in selected
-            and control.control_type == "switch"
+            and control.control_type in {"switch", "alarm"}
             and control.is_readonly
+            and not control.is_hidden
         }
 
         if user_input is not None:
@@ -1001,12 +1002,11 @@ SYSTEM_DEVICE_PREFIXES = (
 
 
 def _visible_controls(controls: dict[str, WBControl], show_system: bool) -> dict[str, WBControl]:
-    if show_system:
-        return controls
     return {
         key: control
         for key, control in controls.items()
-        if not _is_system_device(control.device_id)
+        if not control.is_hidden
+        and (show_system or not _is_system_device(control.device_id))
     }
 
 

@@ -13,6 +13,7 @@ class WBSmsEntity(Entity):
 
     def __init__(self, entry: ConfigEntry, client: WBRuntimeClient, key: str) -> None:
         self._client = client
+        self._attr_available = client.connected
         self._attr_unique_id = f"{entry.entry_id}_{SMS_DEVICE_ID}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_{SMS_DEVICE_ID}")},
@@ -20,3 +21,12 @@ class WBSmsEntity(Entity):
             manufacturer="Wiren Board",
             model="GSM modem",
         )
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(
+            self._client.subscribe_connection(self._handle_connection)
+        )
+
+    def _handle_connection(self, connected: bool) -> None:
+        self._attr_available = connected
+        self.async_write_ha_state()

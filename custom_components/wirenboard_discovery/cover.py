@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .availability import WBAvailabilityTracker
 from .composite import COVER_TYPES, control_by_role, group_device_info, group_icon, group_type
 from .const import DOMAIN
 from .models import WBControl
@@ -47,6 +48,11 @@ class WBCover(CoverEntity):
         self._position = control_by_role(group, controls, "position", "position")
         self._state = control_by_role(group, controls, "state", "state")
         self._obstruction = control_by_role(group, controls, "obstruction", "obstruction")
+        self._availability = WBAvailabilityTracker(
+            self,
+            client,
+            [self._command, self._position, self._state, self._obstruction],
+        )
         self._state_value = self._state.value if self._state else None
         self._position_value = self._position.value if self._position else None
         self._obstruction_value = self._obstruction.value if self._obstruction else None
@@ -58,12 +64,23 @@ class WBCover(CoverEntity):
         self._attr_supported_features = _cover_features(self._command is not None, self._position is not None)
 
     async def async_added_to_hass(self) -> None:
+        self._availability.subscribe()
         if self._state:
-            self._client.subscribe_value(self._state.key, self._handle_state)
+            self.async_on_remove(
+                self._client.subscribe_value(self._state.key, self._handle_state)
+            )
         if self._position:
-            self._client.subscribe_value(self._position.key, self._handle_position)
+            self.async_on_remove(
+                self._client.subscribe_value(
+                    self._position.key, self._handle_position
+                )
+            )
         if self._obstruction:
-            self._client.subscribe_value(self._obstruction.key, self._handle_obstruction)
+            self.async_on_remove(
+                self._client.subscribe_value(
+                    self._obstruction.key, self._handle_obstruction
+                )
+            )
 
     @property
     def current_cover_position(self) -> int | None:

@@ -23,7 +23,7 @@ async def async_setup_entry(
     async_add_entities(
         WBSelect(client, control)
         for control in controls.values()
-        if control.key not in hidden and _is_select(control)
+        if not control.is_hidden and control.key not in hidden and _is_select(control)
     )
 
 

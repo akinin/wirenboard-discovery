@@ -6,6 +6,7 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .availability import WBAvailabilityTracker
 from .climate_modes import (
     available_hvac_modes,
     enum_key_for_hvac_mode,
@@ -55,6 +56,17 @@ class WBClimate(ClimateEntity):
         self._power = control_by_role(group, controls, "power", "power")
         self._mode = control_by_role(group, controls, "mode", "mode")
         self._fan = control_by_role(group, controls, "fan", "fan")
+        self._availability = WBAvailabilityTracker(
+            self,
+            client,
+            [
+                self._current_temperature,
+                self._target_temperature,
+                self._power,
+                self._mode,
+                self._fan,
+            ],
+        )
         self._current_temperature_value = self._value(self._current_temperature)
         self._target_temperature_value = self._value(self._target_temperature)
         self._power_value = self._value(self._power)
@@ -82,16 +94,33 @@ class WBClimate(ClimateEntity):
         self._attr_fan_modes = list(self._fan_key_by_option) or None
 
     async def async_added_to_hass(self) -> None:
+        self._availability.subscribe()
         if self._current_temperature:
-            self._client.subscribe_value(self._current_temperature.key, self._handle_current_temperature)
+            self.async_on_remove(
+                self._client.subscribe_value(
+                    self._current_temperature.key,
+                    self._handle_current_temperature,
+                )
+            )
         if self._target_temperature:
-            self._client.subscribe_value(self._target_temperature.key, self._handle_target_temperature)
+            self.async_on_remove(
+                self._client.subscribe_value(
+                    self._target_temperature.key,
+                    self._handle_target_temperature,
+                )
+            )
         if self._power:
-            self._client.subscribe_value(self._power.key, self._handle_power)
+            self.async_on_remove(
+                self._client.subscribe_value(self._power.key, self._handle_power)
+            )
         if self._mode:
-            self._client.subscribe_value(self._mode.key, self._handle_mode)
+            self.async_on_remove(
+                self._client.subscribe_value(self._mode.key, self._handle_mode)
+            )
         if self._fan:
-            self._client.subscribe_value(self._fan.key, self._handle_fan)
+            self.async_on_remove(
+                self._client.subscribe_value(self._fan.key, self._handle_fan)
+            )
 
     @property
     def current_temperature(self) -> float | None:

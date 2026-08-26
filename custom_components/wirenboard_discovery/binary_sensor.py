@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities = [
         WBBinarySensor(client, control, control.key in inverted)
         for control in controls.values()
-        if control.key not in hidden and _is_binary_sensor(control)
+        if not control.is_hidden and control.key not in hidden and _is_binary_sensor(control)
     ]
     entities.append(WBSmsScriptAvailable(entry, client))
     async_add_entities(entities)
@@ -62,12 +62,15 @@ class WBSmsScriptAvailable(WBSmsEntity, BinarySensorEntity):
         self._tracker = SmsAttemptTracker()
 
     async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
         for field in SMS_FIELDS:
-            self._client.subscribe_value(
-                f"sms_sender/{field}",
-                lambda value, current_field=field: self._handle_value(
-                    current_field, value
-                ),
+            self.async_on_remove(
+                self._client.subscribe_value(
+                    f"sms_sender/{field}",
+                    lambda value, current_field=field: self._handle_value(
+                        current_field, value
+                    ),
+                )
             )
 
     @property
