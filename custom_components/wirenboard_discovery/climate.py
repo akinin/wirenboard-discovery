@@ -6,6 +6,12 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .climate_modes import (
+    available_hvac_modes,
+    enum_key_for_hvac_mode,
+    normalize_hvac_mode,
+    resolve_hvac_mode,
+)
 from .composite import CLIMATE_TYPES, TYPE_AC, control_by_role, group_device_info, group_icon, group_type
 from .const import DOMAIN
 from .models import WBControl, localized_title
@@ -54,6 +60,7 @@ class WBClimate(ClimateEntity):
         self._power_value = self._value(self._power)
         self._mode_value = self._value(self._mode)
         self._fan_value = self._value(self._fan)
+        self._mode_option_by_key = _enum_options(self._mode)
         self._fan_option_by_key = _enum_options(self._fan)
         self._fan_key_by_option = {
             option: key for key, option in self._fan_option_by_key.items()
@@ -66,7 +73,12 @@ class WBClimate(ClimateEntity):
             has_target=self._target_temperature is not None,
             has_fan=bool(self._fan_option_by_key),
         )
-        self._attr_hvac_modes = _hvac_modes(group_type(group))
+        self._attr_hvac_modes = [
+            _hvac(mode)
+            for mode in available_hvac_modes(
+                group_type(group), self._mode_option_by_key
+            )
+        ]
         self._attr_fan_modes = list(self._fan_key_by_option) or None
 
     async def async_added_to_hass(self) -> None:
@@ -93,18 +105,13 @@ class WBClimate(ClimateEntity):
     def hvac_mode(self):
         if self._power is not None and _normalize(self._power_value) in {"0", "false", "off"}:
             return _hvac("off")
-        mode = _normalize(self._mode_value)
-        if mode in {"cool", "cooling", "холод", "охлаждение", "3"}:
-            return _hvac("cool")
-        if mode in {"heat", "heating", "тепло", "нагрев", "4"}:
-            return _hvac("heat")
-        if mode in {"dry", "осушение", "2"}:
-            return _hvac("dry")
-        if mode in {"fan", "fan_only", "вентиляция", "1"}:
-            return _hvac("fan_only")
-        if group_type(self._group) == TYPE_AC:
-            return _hvac("cool")
-        return _hvac("heat")
+        return _hvac(
+            resolve_hvac_mode(
+                self._mode_value,
+                self._mode_option_by_key,
+                default="cool" if group_type(self._group) == TYPE_AC else "heat",
+            )
+        )
 
     @property
     def fan_mode(self) -> str | None:
@@ -120,16 +127,19 @@ class WBClimate(ClimateEntity):
         self._client.publish_control(self._target_temperature, str(kwargs["temperature"]))
 
     async def async_set_hvac_mode(self, hvac_mode) -> None:
-        mode = str(hvac_mode)
-        if mode.endswith(".OFF") or mode == "off":
+        mode = normalize_hvac_mode(hvac_mode)
+        if mode == "off":
             if self._power is not None:
                 self._client.publish_control(self._power, "0")
             return
         if self._power is not None:
             self._client.publish_control(self._power, "1")
-        if self._mode is not None:
+        if self._mode is not None and not self._mode.is_readonly:
             commands = self._group.get("commands") or {}
-            self._client.publish_control(self._mode, str(commands.get(mode, mode)))
+            command = commands.get(mode)
+            if command is None:
+                command = enum_key_for_hvac_mode(mode, self._mode_option_by_key)
+            self._client.publish_control(self._mode, str(command or mode))
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         if self._fan is not None:
@@ -177,14 +187,6 @@ def _climate_features(has_target: bool, has_fan: bool) -> int:
     if has_fan:
         features |= ClimateEntityFeature.FAN_MODE
     return features
-
-
-def _hvac_modes(device_type: str) -> list:
-    if device_type == TYPE_AC:
-        modes = ["off", "cool", "heat", "dry", "fan_only"]
-    else:
-        modes = ["off", "heat"]
-    return [_hvac(mode) for mode in modes]
 
 
 def _hvac(mode: str):

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.2
+
+- Prefer a device's exact `Mode` control over auxiliary mode switches for
+  composite climate entities.
+- Resolve numeric HVAC states through each control's enum labels, preventing
+  R8C thermostat heating mode from appearing as ventilation.
+- Avoid publishing HVAC commands to read-only mode controls.
+
 ## 0.15.0
 
 - Add a dedicated SMS Gateway device without exposing raw `sms_sender` controls.

@@ -4,6 +4,7 @@ from typing import Any
 
 from homeassistant.helpers.entity import DeviceInfo
 
+from .climate_modes import is_primary_mode_control
 from .const import DOMAIN
 from .models import WBControl
 
@@ -115,7 +116,20 @@ def _guess_control(group: dict[str, Any], controls: dict[str, WBControl], role: 
     if role == "power":
         return _first(candidates, lambda control: not control.is_readonly and any(word in _control_text(control) for word in ("power", "вкл", "on")))
     if role == "mode":
-        return _first(candidates, lambda control: not control.is_readonly and "mode" in _control_text(control))
+        return (
+            _first(
+                candidates,
+                lambda control: is_primary_mode_control(
+                    control.control_id, control.control_name
+                ),
+            )
+            or _first(
+                candidates,
+                lambda control: not control.is_readonly
+                and "mode" in _control_text(control),
+            )
+            or _first(candidates, lambda control: "mode" in _control_text(control))
+        )
     if role == "fan":
         return _first(candidates, lambda control: not control.is_readonly and "fan" in _control_text(control))
     return None
