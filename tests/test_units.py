@@ -44,6 +44,9 @@ class DisplayUnitTest(unittest.TestCase):
         self.assertEqual(units.display_unit("m^3"), "m³")
         self.assertEqual(units.display_unit("м3"), "m³")
 
+    def test_particulate_mass_aliases(self) -> None:
+        self.assertEqual(units.display_unit("ug/m^3"), "µg/m³")
+
     def test_explicit_sound_units_are_preserved(self) -> None:
         self.assertEqual(units.display_unit("dB"), "dB")
         self.assertEqual(units.display_unit("dBA"), "dBA")

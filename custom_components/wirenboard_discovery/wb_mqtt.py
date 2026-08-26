@@ -19,6 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 ValueCallback = Callable[[Optional[str]], None]
+MetaCallback = Callable[[WBControl], None]
 
 
 class WBDiscoveryError(Exception):
@@ -221,6 +222,7 @@ class WBRuntimeClient:
         self._prefix = normalize_topic_prefix(prefix)
         self._parser = WBTopicParser(prefix)
         self._callbacks: dict[str, list[ValueCallback]] = {}
+        self._meta_callbacks: dict[str, list[MetaCallback]] = {}
         self._connected = threading.Event()
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if username:
@@ -243,6 +245,11 @@ class WBRuntimeClient:
         self._callbacks.setdefault(key, []).append(callback)
         if key in self._parser.controls:
             callback(self._parser.controls[key].value)
+
+    def subscribe_meta(self, key: str, callback: MetaCallback) -> None:
+        self._meta_callbacks.setdefault(key, []).append(callback)
+        if key in self._parser.controls:
+            callback(self._parser.controls[key])
 
     def publish_control(self, control: WBControl, value: str) -> None:
         topic = self._topic_for(control, command=True)
@@ -289,11 +296,17 @@ class WBRuntimeClient:
         payload = message.payload.decode("utf-8", errors="replace")
         self._parser.parse_message(message.topic, payload)
         key = self._key_from_topic(message.topic)
-        if not key:
-            return
-        callbacks = list(self._callbacks.get(key, []))
-        for callback in callbacks:
-            self._loop.call_soon_threadsafe(callback, payload)
+        if key:
+            callbacks = list(self._callbacks.get(key, []))
+            for callback in callbacks:
+                self._loop.call_soon_threadsafe(callback, payload)
+
+        meta_key = self._control_key_from_topic(message.topic)
+        if meta_key and "/meta" in message.topic:
+            control = self._parser.controls.get(meta_key)
+            if control:
+                for callback in list(self._meta_callbacks.get(meta_key, [])):
+                    self._loop.call_soon_threadsafe(callback, control)
 
     def _key_from_topic(self, topic: str) -> str | None:
         normalized = self._parser._strip_prefix(topic)
@@ -301,6 +314,15 @@ class WBRuntimeClient:
             return None
         parts = normalized.split("/")
         if len(parts) == 4 and parts[0] == "devices" and parts[2] == "controls":
+            return f"{parts[1]}/{parts[3]}"
+        return None
+
+    def _control_key_from_topic(self, topic: str) -> str | None:
+        normalized = self._parser._strip_prefix(topic)
+        if not normalized:
+            return None
+        parts = normalized.split("/")
+        if len(parts) >= 4 and parts[0] == "devices" and parts[2] == "controls":
             return f"{parts[1]}/{parts[3]}"
         return None
 

@@ -11,6 +11,7 @@ from .entity import WBEntity
 from .models import WBControl
 from .sms import SMS_FIELDS, SmsAttemptTracker
 from .sms_entity import WBSmsEntity
+from .standards import canonical_binary_device_class
 from .wb_mqtt import WBRuntimeClient
 
 
@@ -32,7 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 def _is_binary_sensor(control: WBControl) -> bool:
     return (
         control.device_id != "sms_sender"
-        and control.control_type == "switch"
+        and control.control_type in {"switch", "alarm"}
         and control.is_readonly
     )
 
@@ -79,6 +80,9 @@ class WBSmsScriptAvailable(WBSmsEntity, BinarySensorEntity):
 
 
 def _binary_device_class(control: WBControl) -> str | None:
+    standard_class = canonical_binary_device_class(control.control_id)
+    if standard_class:
+        return standard_class
     name = f"{control.control_id} {control.control_name or ''}".lower()
     if any(word in name for word in ("motion", "presence", "occupancy", "движ", "присутств")):
         return "motion"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 
 import voluptuous as vol
@@ -30,7 +31,9 @@ from .const import (
 )
 from .device_groups import async_apply_device_groups
 from .models import WBControl
-from .wb_mqtt import WBRuntimeClient
+from .wb_mqtt import WBDiscoveryError, WBRuntimeClient, discover_controls
+
+_LOGGER = logging.getLogger(__name__)
 
 SEND_SMS_SCHEMA = vol.Schema(
     {
@@ -100,7 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await client.async_start()
 
-    controls = _entry_controls(entry)
+    controls = await _async_entry_controls(hass, entry, data)
     groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
     await async_apply_device_groups(hass, controls, groups)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
@@ -216,6 +219,38 @@ def _entry_controls(entry: ConfigEntry) -> dict[str, WBControl]:
         for key, value in stored.items()
         if key in selected
     }
+
+
+async def _async_entry_controls(
+    hass: HomeAssistant, entry: ConfigEntry, connection: dict
+) -> dict[str, WBControl]:
+    """Refresh retained metadata on startup, falling back to stored discovery."""
+    stored = _entry_controls(entry)
+    selected = set(
+        entry.options.get(
+            CONF_SELECTED_CONTROLS, entry.data.get(CONF_SELECTED_CONTROLS, [])
+        )
+    )
+    try:
+        discovered = await hass.async_add_executor_job(
+            discover_controls,
+            connection[CONF_HOST],
+            connection[CONF_PORT],
+            connection.get(CONF_USERNAME) or None,
+            connection.get(CONF_PASSWORD) or None,
+            connection[CONF_PREFIX],
+        )
+    except WBDiscoveryError:
+        _LOGGER.warning(
+            "Cannot refresh Wiren Board metadata; using stored controls",
+            exc_info=True,
+        )
+        return stored
+
+    if not discovered:
+        _LOGGER.warning("Wiren Board metadata refresh returned no controls")
+        return stored
+    return {key: control for key, control in discovered.items() if key in selected}
 
 
 def _entry_connection(entry: ConfigEntry) -> dict:

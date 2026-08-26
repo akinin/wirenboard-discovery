@@ -30,6 +30,10 @@ def display_unit(unit: str | None) -> str | None:
         "m3": "m³",
         "м^3": "m³",
         "м3": "m³",
+        "ug/m^3": "µg/m³",
+        "ug/m3": "µg/m³",
+        "μg/m^3": "µg/m³",
+        "μg/m³": "µg/m³",
     }
     return aliases.get(key, normalized)
 

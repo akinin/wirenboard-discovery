@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.16.0
+
+- Recognize canonical WB-STD-001 sensor and alarm identifiers, including the
+  standard MQTT `alarm` control type, while retaining
+  unit- and title-based classification for legacy device templates.
+- Supply the canonical unit when older WB metadata omits it.
+- Mark canonical controller service channels as diagnostic entities.
+- Make entities unavailable while Wiren Board reports a non-empty
+  `meta/error`, and restore them when the error is cleared.
+- Refresh retained control metadata during startup, while keeping stored
+  discovery data as an offline fallback.
+- Include a backwards-compatible, bilingual R8C-963S template with corrected
+  units and the absent floor sensor disabled by default.
+
 ## 0.15.2
 
 - Prefer a device's exact `Mode` control over auxiliary mode switches for

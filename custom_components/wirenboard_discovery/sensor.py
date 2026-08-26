@@ -13,6 +13,11 @@ from .entity import WBEntity
 from .models import WBControl, localized_title
 from .sms import SMS_FIELDS
 from .sms_entity import WBSmsEntity
+from .standards import (
+    canonical_sensor_device_class,
+    canonical_sensor_unit,
+    is_diagnostic_id,
+)
 from .units import display_unit, normalized_unit, numeric_state_class
 from .wb_mqtt import WBRuntimeClient
 
@@ -34,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 def _is_sensor(control: WBControl) -> bool:
     return (
         control.device_id != "sms_sender"
-        and control.control_type not in {"switch", "range"}
+        and control.control_type not in {"switch", "alarm", "range"}
         and control.is_readonly
     )
 
@@ -50,6 +55,8 @@ class WBSensor(WBEntity, SensorEntity):
         self._attr_device_class = metadata.get("device_class")
         self._attr_state_class = metadata.get("state_class")
         self._attr_native_unit_of_measurement = metadata.get("unit")
+        if metadata.get("diagnostic"):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self):
@@ -106,7 +113,7 @@ class WBSmsDiagnosticSensor(WBSmsEntity, SensorEntity):
         self.async_write_ha_state()
 
 
-def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
+def _sensor_metadata(control: WBControl) -> dict[str, str | bool | None]:
     # Enum values are descriptive states, even when their parent logical group
     # is a gas/water meter. Giving them a numeric device class makes Home
     # Assistant try to parse localized labels such as "Хорошее" as numbers.
@@ -117,6 +124,7 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
     configured_type = str(control.meta.get("ha_device_type") or "").lower()
     units = control.units or control.meta.get("units") or control.meta.get("unit")
     unit = display_unit(str(units)) if units is not None else None
+    unit = unit or display_unit(canonical_sensor_unit(control.control_id))
     unit_key = normalized_unit(unit)
     text = f"{control.control_id} {control.control_name or ''}".lower()
 
@@ -134,8 +142,14 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         "gas": {"device_class": "gas", "unit": unit or "m³"},
         "water": {"device_class": "water", "unit": unit or "m³"},
     }
+    standard_device_class = canonical_sensor_device_class(control.control_id)
     metadata = (
         mapping.get(configured_type)
+        or (
+            {"device_class": standard_device_class, "unit": unit}
+            if standard_device_class
+            else None
+        )
         or mapping.get(control_type)
         or _metadata_from_unit(unit_key, unit, text)
         or {"device_class": None, "unit": unit}
@@ -149,6 +163,7 @@ def _sensor_metadata(control: WBControl) -> dict[str, str | None]:
         "device_class": metadata.get("device_class"),
         "unit": metadata.get("unit"),
         "state_class": state_class,
+        "diagnostic": is_diagnostic_id(control.control_id),
     }
 
 
