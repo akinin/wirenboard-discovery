@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.17.0
+
+- Localize device, entity, and enum titles using the Home Assistant language,
+  with backwards-compatible fallbacks for incomplete WB translations.
+- Attach published device metadata to Home Assistant devices and promote both
+  WB-STD-001 and legacy controller identity controls to serial, software, and
+  hardware version fields.
+- Preserve the last stored value when a startup metadata refresh has not yet
+  received the corresponding retained state.
+- Detect metadata changes for selected controls and reload only this config
+  entry after a short debounce; newly discovered controls remain opt-in and
+  appear in the options flow from the live MQTT inventory. Initial retained
+  MQTT messages are explicitly excluded from reload triggers, and the runtime
+  inventory gets a stabilization period before change detection is armed.
+- Expand diagnostics with WB-STD-001 adoption, hidden controls, device/control
+  errors, device metadata coverage, and active MQTT drivers.
+
 ## 0.16.1
 
 - Mark entities unavailable on MQTT disconnect and device-level `meta/error`,

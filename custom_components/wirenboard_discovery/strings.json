@@ -165,7 +165,7 @@
       },
       "diagnostics": {
         "title": "Диагностика Wiren Board",
-        "description": "Устройства: {device_count}\nЭлементы: {control_count}\nВыбрано элементов: {selected_count}\nГруппы: {group_count}\nСистемные элементы: {system_control_count}\nУправляемые элементы: {writable_control_count}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
+        "description": "Устройства: {device_count}\nУстройства с метаданными: {device_meta_count}\nЭлементы: {control_count}\nВыбрано элементов: {selected_count}\nГруппы: {group_count}\nСистемные элементы: {system_control_count}\nУправляемые элементы: {writable_control_count}\nКанонические WB-STD-001: {canonical_control_count}\nУстаревшие идентификаторы: {legacy_control_count}\nСкрытые элементы: {hidden_control_count}\nОшибки элементов: {control_error_count}\nОшибки устройств: {device_error_count}\nДрайверы: {drivers}\nMQTT-сообщений за проверку: {message_count}\nОшибки парсинга: {parse_errors}\nДлительность проверки, с: {elapsed_seconds}\nТипы: {type_counts}\nПоследний топик: {last_topic}\nПоследнее значение: {last_payload}"
       }
     },
     "error": {

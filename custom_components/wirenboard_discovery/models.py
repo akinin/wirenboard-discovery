@@ -18,6 +18,7 @@ class WBControl:
     ha_device_id: str | None = None
     ha_device_name: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)
+    device_meta: dict[str, Any] = field(default_factory=dict)
 
     @property
     def key(self) -> str:
@@ -60,9 +61,13 @@ def normalize_topic_prefix(prefix: str | None) -> str:
     return "/" + prefix.strip("/")
 
 
-def localized_title(value: Any) -> str | None:
+def localized_title(value: Any, language: str | None = None) -> str | None:
     if isinstance(value, dict):
-        return value.get("ru") or value.get("en") or next(iter(value.values()), None)
+        preferred = str(language or "").replace("_", "-").split("-", 1)[0].lower()
+        if preferred and value.get(preferred) is not None:
+            return str(value[preferred])
+        fallback = value.get("ru") or value.get("en") or next(iter(value.values()), None)
+        return str(fallback) if fallback is not None else None
     if value is None:
         return None
     return str(value)

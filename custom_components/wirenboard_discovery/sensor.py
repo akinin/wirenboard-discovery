@@ -48,7 +48,7 @@ class WBSensor(WBEntity, SensorEntity):
     def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
         self._enum = {
-            str(key): localized_title(title) or str(key)
+            str(key): localized_title(title, client.language) or str(key)
             for key, title in (control.meta.get("enum") or {}).items()
         }
         metadata = _sensor_metadata(control)

@@ -36,6 +36,12 @@ class ControlMetadataTest(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertFalse(models.has_meta_error(value))
 
+    def test_localized_title_uses_home_assistant_language(self) -> None:
+        title = {"en": "Temperature", "ru": "Температура"}
+        self.assertEqual(models.localized_title(title, "en-US"), "Temperature")
+        self.assertEqual(models.localized_title(title, "ru_RU"), "Температура")
+        self.assertEqual(models.localized_title(title, "de"), "Температура")
+
 
 if __name__ == "__main__":
     unittest.main()

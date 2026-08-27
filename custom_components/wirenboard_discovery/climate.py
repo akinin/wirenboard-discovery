@@ -72,8 +72,8 @@ class WBClimate(ClimateEntity):
         self._power_value = self._value(self._power)
         self._mode_value = self._value(self._mode)
         self._fan_value = self._value(self._fan)
-        self._mode_option_by_key = _enum_options(self._mode)
-        self._fan_option_by_key = _enum_options(self._fan)
+        self._mode_option_by_key = _enum_options(self._mode, client.language)
+        self._fan_option_by_key = _enum_options(self._fan, client.language)
         self._fan_key_by_option = {
             option: key for key, option in self._fan_option_by_key.items()
         }
@@ -235,10 +235,12 @@ def _normalize(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 
-def _enum_options(control: WBControl | None) -> dict[str, str]:
+def _enum_options(
+    control: WBControl | None, language: str | None = None
+) -> dict[str, str]:
     if control is None or not isinstance(control.meta.get("enum"), dict):
         return {}
     return {
-        str(key): localized_title(title) or str(key)
+        str(key): localized_title(title, language) or str(key)
         for key, title in control.meta["enum"].items()
     }

@@ -165,7 +165,7 @@
       },
       "diagnostics": {
         "title": "Wiren Board diagnostics",
-        "description": "Devices: {device_count}\nItems: {control_count}\nSelected items: {selected_count}\nGroups: {group_count}\nSystem items: {system_control_count}\nWritable items: {writable_control_count}\nMQTT messages during check: {message_count}\nParse errors: {parse_errors}\nCheck duration, s: {elapsed_seconds}\nTypes: {type_counts}\nLast topic: {last_topic}\nLast value: {last_payload}"
+        "description": "Devices: {device_count}\nDevices with metadata: {device_meta_count}\nItems: {control_count}\nSelected items: {selected_count}\nGroups: {group_count}\nSystem items: {system_control_count}\nWritable items: {writable_control_count}\nCanonical WB-STD-001: {canonical_control_count}\nLegacy identifiers: {legacy_control_count}\nHidden items: {hidden_control_count}\nItem errors: {control_error_count}\nDevice errors: {device_error_count}\nDrivers: {drivers}\nMQTT messages during check: {message_count}\nParse errors: {parse_errors}\nCheck duration, s: {elapsed_seconds}\nTypes: {type_counts}\nLast topic: {last_topic}\nLast value: {last_payload}"
       }
     },
     "error": {

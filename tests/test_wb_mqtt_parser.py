@@ -69,6 +69,26 @@ class TopicParserTest(unittest.TestCase):
         self.assertTrue(control.is_hidden)
         self.assertEqual(control.meta["error"], "rp")
 
+    def test_device_metadata_is_copied_to_controls(self) -> None:
+        parser = wb_mqtt.WBTopicParser("/")
+        parser.parse_message(
+            "/devices/wb-test/meta",
+            '{"driver":"wb-modbus","title":{"en":"Test module"}}',
+        )
+        parser.parse_message("/devices/wb-test/controls/temperature", "21.5")
+        control = parser.controls["wb-test/temperature"]
+        self.assertEqual(control.device_meta["driver"], "wb-modbus")
+
+    def test_legacy_system_identity_controls_enrich_device_metadata(self) -> None:
+        parser = wb_mqtt.WBTopicParser("/")
+        parser.parse_message("/devices/system/controls/Short SN", "AAEYWSY6")
+        parser.parse_message("/devices/system/controls/HW Revision", "8.5.3")
+        parser.parse_message("/devices/system/controls/Release name", "unstable.latest")
+        control = parser.controls["system/Short SN"]
+        self.assertEqual(control.device_meta["serial_number"], "AAEYWSY6")
+        self.assertEqual(control.device_meta["hw_version"], "8.5.3")
+        self.assertEqual(control.device_meta["sw_version"], "unstable.latest")
+
 
 if __name__ == "__main__":
     unittest.main()

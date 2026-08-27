@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 import logging
 import re
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType
 
 from .config_flow import control_from_dict
@@ -31,7 +33,13 @@ from .const import (
 )
 from .device_groups import async_apply_device_groups
 from .models import WBControl
-from .wb_mqtt import WBDiscoveryError, WBRuntimeClient, discover_controls
+from .wb_mqtt import (
+    WBDiscoveryError,
+    WBRuntimeClient,
+    control_metadata_signature,
+    discover_controls,
+    identity_metadata_key,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,6 +108,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data.get(CONF_USERNAME) or None,
         data.get(CONF_PASSWORD) or None,
         data[CONF_PREFIX],
+        hass.config.language,
     )
     await client.async_start()
 
@@ -107,7 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _remove_hidden_control_entries(hass, entry, controls)
     groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
     await async_apply_device_groups(hass, controls, groups)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+    runtime = {
         "client": client,
         "sms_lock": asyncio.Lock(),
         "controls": controls,
@@ -117,8 +126,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
         ),
     }
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _reconcile_control_devices(hass, entry, controls)
+    _reconcile_device_identity(hass, entry, controls)
+    _watch_selected_inventory(hass, entry, runtime)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
@@ -233,6 +245,34 @@ def _reconcile_control_devices(
             device_registry.async_remove_device(device_id)
 
 
+def _reconcile_device_identity(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    controls: dict[str, WBControl],
+) -> None:
+    """Apply identity controls after platform devices have been registered."""
+    stored = _entry_controls(entry)
+    updates_by_identifier: dict[str, dict[str, str]] = {}
+    for key, control in controls.items():
+        identity_key = identity_metadata_key(control.control_id)
+        if identity_key not in {"serial_number", "sw_version", "hw_version"}:
+            continue
+        value = control.value
+        if value is None or not str(value).strip():
+            previous = stored.get(key)
+            value = previous.value if previous else None
+        if value is None or not str(value).strip():
+            continue
+        identifier = control.ha_device_id or control.device_id
+        updates_by_identifier.setdefault(identifier, {})[identity_key] = str(value)
+
+    registry = dr.async_get(hass)
+    for identifier, updates in updates_by_identifier.items():
+        device = registry.async_get_device(identifiers={(DOMAIN, identifier)})
+        if device is not None:
+            registry.async_update_device(device.id, **updates)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
@@ -243,6 +283,71 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _watch_selected_inventory(
+    hass: HomeAssistant, entry: ConfigEntry, runtime: dict
+) -> None:
+    """Reload only this integration entry when selected MQTT metadata changes."""
+    client: WBRuntimeClient = runtime["client"]
+    selected = set(
+        entry.options.get(
+            CONF_SELECTED_CONTROLS, entry.data.get(CONF_SELECTED_CONTROLS, [])
+        )
+    )
+    runtime["inventory_signature"] = _selected_inventory_signature(client, selected)
+    runtime["inventory_reload_cancel"] = None
+    runtime["inventory_armed"] = False
+
+    async def async_reload(_now) -> None:
+        runtime["inventory_reload_cancel"] = None
+        if entry.entry_id in hass.data.get(DOMAIN, {}):
+            await hass.config_entries.async_reload(entry.entry_id)
+
+    def inventory_changed() -> None:
+        if not runtime["inventory_armed"]:
+            return
+        signature = _selected_inventory_signature(client, selected)
+        if signature == runtime["inventory_signature"]:
+            return
+        runtime["inventory_signature"] = signature
+        cancel = runtime.get("inventory_reload_cancel")
+        if cancel:
+            cancel()
+        runtime["inventory_reload_cancel"] = async_call_later(
+            hass, 2.0, async_reload
+        )
+
+    def cleanup() -> None:
+        cancel = runtime.get("inventory_reload_cancel")
+        if cancel:
+            cancel()
+            runtime["inventory_reload_cancel"] = None
+
+    @callback
+    def arm_inventory(_now) -> None:
+        runtime["inventory_signature"] = _selected_inventory_signature(
+            client, selected
+        )
+        runtime["inventory_armed"] = True
+
+    entry.async_on_unload(client.subscribe_inventory(inventory_changed))
+    entry.async_on_unload(async_call_later(hass, 120.0, arm_inventory))
+    entry.async_on_unload(cleanup)
+
+
+def _selected_inventory_signature(
+    client: WBRuntimeClient, selected: set[str]
+) -> tuple:
+    return tuple(
+        (
+            key,
+            control_metadata_signature(client.controls[key])
+            if key in client.controls
+            else None,
+        )
+        for key in sorted(selected)
+    )
 
 
 def _entry_controls(entry: ConfigEntry) -> dict[str, WBControl]:
@@ -284,7 +389,20 @@ async def _async_entry_controls(
     if not discovered:
         _LOGGER.warning("Wiren Board metadata refresh returned no controls")
         return stored
-    return {key: control for key, control in discovered.items() if key in selected}
+    refreshed: dict[str, WBControl] = {}
+    for key, control in discovered.items():
+        if key not in selected:
+            continue
+        previous = stored.get(key)
+        if (
+            (control.value is None or not str(control.value).strip())
+            and previous
+            and previous.value is not None
+            and str(previous.value).strip()
+        ):
+            control = replace(control, value=previous.value)
+        refreshed[key] = control
+    return refreshed
 
 
 def _entry_connection(entry: ConfigEntry) -> dict:

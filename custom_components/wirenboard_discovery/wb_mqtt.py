@@ -22,6 +22,7 @@ ValueCallback = Callable[[Optional[str]], None]
 MetaCallback = Callable[[WBControl], None]
 DeviceMetaCallback = Callable[[dict[str, object]], None]
 ConnectionCallback = Callable[[bool], None]
+InventoryCallback = Callable[[], None]
 UnsubscribeCallback = Callable[[], None]
 
 
@@ -32,6 +33,7 @@ class WBDiscoveryError(Exception):
 @dataclass
 class WBDiscoverySnapshot:
     controls: dict[str, WBControl]
+    device_meta: dict[str, dict[str, object]]
     message_count: int
     last_topic: str | None = None
     last_payload: str | None = None
@@ -76,6 +78,7 @@ class WBTopicParser:
             device_id=device_id,
             control_id=control_id,
             device_name=self.devices.get(device_id),
+            device_meta=dict(self.device_meta.get(device_id, {})),
         )
 
         if len(parts) == 4:
@@ -86,6 +89,18 @@ class WBTopicParser:
             self._apply_control_meta(control, {parts[5]: payload})
 
         self.controls[key] = control
+        if len(parts) == 4:
+            self._apply_identity_control(control)
+
+    def _apply_identity_control(self, control: WBControl) -> None:
+        """Promote published identity controls into HA device metadata."""
+        if control.value is None or not str(control.value).strip():
+            return
+        identity_key = identity_metadata_key(control.control_id)
+        if identity_key is None:
+            return
+        self.device_meta.setdefault(control.device_id, {})[identity_key] = control.value
+        self._apply_device_meta(control.device_id)
 
     def _parse_device_meta(self, parts: list[str], payload: str) -> None:
         device_id = parts[1]
@@ -97,6 +112,7 @@ class WBTopicParser:
                 if name:
                     self.devices[device_id] = name
                     self._apply_device_name(device_id, name)
+                self._apply_device_meta(device_id)
             return
 
         if len(parts) == 4:
@@ -105,6 +121,7 @@ class WBTopicParser:
             if key == "name":
                 self.devices[device_id] = payload
                 self._apply_device_name(device_id, payload)
+            self._apply_device_meta(device_id)
 
     def _apply_control_meta(self, control: WBControl, meta: object) -> None:
         if not isinstance(meta, dict):
@@ -128,6 +145,12 @@ class WBTopicParser:
         for key, control in list(self.controls.items()):
             if control.device_id == device_id:
                 self.controls[key] = replace(control, device_name=name)
+
+    def _apply_device_meta(self, device_id: str) -> None:
+        meta = dict(self.device_meta.get(device_id, {}))
+        for key, control in list(self.controls.items()):
+            if control.device_id == device_id:
+                self.controls[key] = replace(control, device_meta=meta)
 
 
 def discover_controls(
@@ -199,6 +222,7 @@ def discover_snapshot(
         time.sleep(timeout)
         return WBDiscoverySnapshot(
             controls=parser.controls,
+            device_meta=parser.device_meta,
             message_count=int(stats["message_count"]),
             last_topic=stats["last_topic"],
             last_payload=stats["last_payload"],
@@ -221,6 +245,7 @@ class WBRuntimeClient:
         username: str | None,
         password: str | None,
         prefix: str,
+        language: str | None = None,
     ) -> None:
         self._loop = loop
         self._host = host
@@ -228,11 +253,13 @@ class WBRuntimeClient:
         self._username = username
         self._password = password
         self._prefix = normalize_topic_prefix(prefix)
+        self.language = language
         self._parser = WBTopicParser(prefix)
         self._callbacks: dict[str, list[ValueCallback]] = {}
         self._meta_callbacks: dict[str, list[MetaCallback]] = {}
         self._device_meta_callbacks: dict[str, list[DeviceMetaCallback]] = {}
         self._connection_callbacks: list[ConnectionCallback] = []
+        self._inventory_callbacks: list[InventoryCallback] = []
         self._connected = threading.Event()
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if username:
@@ -292,6 +319,17 @@ class WBRuntimeClient:
 
         return unsubscribe
 
+    def subscribe_inventory(self, callback: InventoryCallback) -> UnsubscribeCallback:
+        self._inventory_callbacks.append(callback)
+
+        def unsubscribe() -> None:
+            try:
+                self._inventory_callbacks.remove(callback)
+            except ValueError:
+                pass
+
+        return unsubscribe
+
     def publish_control(self, control: WBControl, value: str) -> None:
         topic = self._topic_for(control, command=True)
         self._client.publish(topic, value)
@@ -341,7 +379,16 @@ class WBRuntimeClient:
 
     def _on_message(self, _client, _userdata, message) -> None:
         payload = message.payload.decode("utf-8", errors="replace")
+        control_key = self._control_key_from_topic(message.topic)
+        control_device_id = control_key.split("/", 1)[0] if control_key else None
+        device_meta_before = (
+            _freeze(self._parser.device_meta.get(control_device_id, {}))
+            if control_device_id
+            else None
+        )
+        before = self._inventory_signature(message.topic)
         self._parser.parse_message(message.topic, payload)
+        after = self._inventory_signature(message.topic)
         key = self._key_from_topic(message.topic)
         if key:
             callbacks = list(self._callbacks.get(key, []))
@@ -360,6 +407,36 @@ class WBRuntimeClient:
             meta = self._parser.device_meta.get(device_id, {})
             for callback in list(self._device_meta_callbacks.get(device_id, [])):
                 self._loop.call_soon_threadsafe(callback, meta)
+
+        if (
+            control_device_id
+            and device_meta_before
+            != _freeze(self._parser.device_meta.get(control_device_id, {}))
+        ):
+            meta = self._parser.device_meta.get(control_device_id, {})
+            for callback in list(
+                self._device_meta_callbacks.get(control_device_id, [])
+            ):
+                self._loop.call_soon_threadsafe(callback, meta)
+
+        # Retained messages build the initial inventory after every MQTT
+        # subscription. They are not live metadata changes and must never
+        # trigger a config-entry reload loop.
+        if before != after and not message.retain:
+            for callback in list(self._inventory_callbacks):
+                self._loop.call_soon_threadsafe(callback)
+
+    def _inventory_signature(self, topic: str) -> tuple | None:
+        control_key = self._control_key_from_topic(topic)
+        if control_key:
+            control = self._parser.controls.get(control_key)
+            if control is None:
+                return None
+            return control_metadata_signature(control)
+        device_id = self._device_id_from_meta_topic(topic)
+        if device_id:
+            return _freeze(self._parser.device_meta.get(device_id, {}))
+        return None
 
     def _key_from_topic(self, topic: str) -> str | None:
         normalized = self._parser._strip_prefix(topic)
@@ -428,3 +505,42 @@ def _json_or_text(payload: str) -> object:
         return json.loads(payload)
     except json.JSONDecodeError:
         return payload
+
+
+def identity_metadata_key(control_id: str) -> str | None:
+    normalized = " ".join(control_id.strip().lower().replace("_", " ").split())
+    return {
+        "sn": "serial_number",
+        "short sn": "serial_number",
+        "serial": "serial_number",
+        "serial number": "serial_number",
+        "fw": "sw_version",
+        "firmware": "sw_version",
+        "release name": "sw_version",
+        "hw": "hw_version",
+        "hw revision": "hw_version",
+        "hardware": "hw_version",
+        "batch no": "hw_batch",
+        "hw batch": "hw_batch",
+        "manufacturing date": "manufacturing_date",
+    }.get(normalized)
+
+
+def control_metadata_signature(control: WBControl) -> tuple:
+    return (
+        control.device_name,
+        control.control_name,
+        control.control_type,
+        control.readonly,
+        control.units,
+        _freeze(control.meta),
+        _freeze(control.device_meta),
+    )
+
+
+def _freeze(value: object) -> object:
+    if isinstance(value, dict):
+        return tuple(sorted((str(key), _freeze(item)) for key, item in value.items()))
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    return value

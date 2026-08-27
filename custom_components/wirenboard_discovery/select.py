@@ -36,7 +36,7 @@ class WBSelect(WBEntity, SelectEntity):
         super().__init__(client, control)
         enum = control.meta.get("enum", {})
         self._option_by_key = {
-            str(key): localized_title(title) or str(key)
+            str(key): localized_title(title, client.language) or str(key)
             for key, title in enum.items()
         }
         self._key_by_option = {option: key for key, option in self._option_by_key.items()}

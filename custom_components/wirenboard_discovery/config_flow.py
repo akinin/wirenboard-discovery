@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+from dataclasses import replace
 from typing import Any
 
 import voluptuous as vol
@@ -37,7 +38,8 @@ from .const import (
     DEFAULT_SHOW_SYSTEM_DEVICES,
     DOMAIN,
 )
-from .models import WBControl
+from .models import WBControl, has_meta_error, localized_title
+from .standards import is_canonical_id
 from .wb_mqtt import WBDiscoveryError, discover_controls, discover_snapshot
 
 _LOGGER = logging.getLogger(__name__)
@@ -684,6 +686,29 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         writable_controls = [
             key for key, control in snapshot.controls.items() if not control.is_readonly
         ]
+        canonical_controls = [
+            key
+            for key, control in snapshot.controls.items()
+            if is_canonical_id(control.control_id)
+        ]
+        hidden_controls = [
+            key for key, control in snapshot.controls.items() if control.is_hidden
+        ]
+        control_errors = [
+            key
+            for key, control in snapshot.controls.items()
+            if has_meta_error(control.meta.get("error"))
+        ]
+        device_errors = [
+            device_id
+            for device_id, meta in snapshot.device_meta.items()
+            if has_meta_error(meta.get("error"))
+        ]
+        drivers = {
+            str(meta["driver"])
+            for meta in snapshot.device_meta.values()
+            if meta.get("driver")
+        }
         type_counts: dict[str, int] = {}
         for control in snapshot.controls.values():
             control_type = control.control_type or "unknown"
@@ -696,6 +721,13 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             "group_count": str(len(self._current_groups())),
             "system_control_count": str(len(system_controls)),
             "writable_control_count": str(len(writable_controls)),
+            "canonical_control_count": str(len(canonical_controls)),
+            "legacy_control_count": str(len(snapshot.controls) - len(canonical_controls)),
+            "hidden_control_count": str(len(hidden_controls)),
+            "control_error_count": str(len(control_errors)),
+            "device_error_count": str(len(device_errors)),
+            "device_meta_count": str(len(snapshot.device_meta)),
+            "drivers": ", ".join(sorted(drivers)) or "-",
             "message_count": str(snapshot.message_count),
             "parse_errors": str(snapshot.parse_errors),
             "elapsed_seconds": str(snapshot.elapsed_seconds),
@@ -713,6 +745,13 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         if self._controls:
             return {}
 
+        runtime = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id)
+        if runtime and runtime["client"].controls:
+            self._controls = _localized_controls(
+                runtime["client"].controls, self.hass.config.language
+            )
+            return {}
+
         data = self._current_connection()
         try:
             self._controls = await self.hass.async_add_executor_job(
@@ -726,6 +765,9 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         except WBDiscoveryError:
             _LOGGER.exception("Cannot rediscover Wiren Board devices")
             return {"base": "cannot_connect"}
+        self._controls = _localized_controls(
+            self._controls, self.hass.config.language
+        )
         return {}
 
     def _current_selected_controls(self) -> list[str]:
@@ -942,11 +984,33 @@ def control_to_dict(control: WBControl) -> dict[str, Any]:
         "ha_device_id": control.ha_device_id,
         "ha_device_name": control.ha_device_name,
         "meta": control.meta,
+        "device_meta": control.device_meta,
     }
 
 
 def control_from_dict(data: dict[str, Any]) -> WBControl:
     return WBControl(**data)
+
+
+def _localized_controls(
+    controls: dict[str, WBControl], language: str | None
+) -> dict[str, WBControl]:
+    return {
+        key: replace(
+            control,
+            device_name=(
+                localized_title(control.device_meta.get("title"), language)
+                or localized_title(control.device_meta.get("name"), language)
+                or control.device_name
+            ),
+            control_name=(
+                localized_title(control.meta.get("title"), language)
+                or localized_title(control.meta.get("name"), language)
+                or control.control_name
+            ),
+        )
+        for key, control in controls.items()
+    }
 
 
 def _is_wirenboard_zeroconf(discovery_info: Any) -> bool:
