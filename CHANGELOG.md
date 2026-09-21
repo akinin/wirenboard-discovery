@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.2
+
+- Stop scheduling MQTT worker-thread callbacks when Home Assistant is shutting
+  down, and suppress the expected disconnect warning during a clean stop.
+- Scope device-registry lookups to this configuration entry using the current
+  Home Assistant API, removing deprecation warnings while retaining
+  compatibility with Home Assistant 2026.6 and 2026.7.
+
 ## 0.17.1
 
 - Treat live control- and device-level `meta/error` updates strictly as

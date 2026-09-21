@@ -263,6 +263,9 @@ class WBRuntimeClient:
         self._connection_callbacks: list[ConnectionCallback] = []
         self._inventory_callbacks: list[InventoryCallback] = []
         self._connected = threading.Event()
+        self._stopping = threading.Event()
+        self._stop_lock = asyncio.Lock()
+        self._stopped = False
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if username:
             self._client.username_pw_set(username, password)
@@ -279,10 +282,20 @@ class WBRuntimeClient:
         return self._connected.is_set()
 
     async def async_start(self) -> None:
-        await self._loop.run_in_executor(None, self._start)
+        async with self._stop_lock:
+            if self._stopping.is_set():
+                raise WBDiscoveryError("Wiren Board MQTT client is stopping")
+            await self._loop.run_in_executor(None, self._start)
 
     async def async_stop(self) -> None:
-        await self._loop.run_in_executor(None, self._stop)
+        async with self._stop_lock:
+            if self._stopped:
+                return
+            # Paho callbacks run in a worker thread. Stop queuing them before
+            # waiting for the worker to exit, especially during HA shutdown.
+            self._stopping.set()
+            await self._loop.run_in_executor(None, self._stop)
+            self._stopped = True
 
     def subscribe_value(
         self, key: str, callback: ValueCallback
@@ -349,16 +362,24 @@ class WBRuntimeClient:
         self._client.connect(self._host, self._port, keepalive=30)
         self._client.loop_start()
         if not self._connected.wait(timeout=10):
-            self._client.loop_stop()
-            self._client.disconnect()
+            self._stopping.set()
+            try:
+                self._client.disconnect()
+            finally:
+                self._client.loop_stop()
             raise WBDiscoveryError("timeout waiting for Wiren Board MQTT connection")
 
     def _stop(self) -> None:
+        self._stopping.set()
         self._connected.clear()
-        self._client.loop_stop()
-        self._client.disconnect()
+        try:
+            self._client.disconnect()
+        finally:
+            self._client.loop_stop()
 
     def _on_connect(self, client, _userdata, _flags, reason_code, _properties) -> None:
+        if self._stopping.is_set():
+            return
         if _reason_code_failed(reason_code):
             _LOGGER.warning("Wiren Board MQTT connection failed: %s", reason_code)
             return
@@ -375,11 +396,13 @@ class WBRuntimeClient:
     ) -> None:
         was_connected = self._connected.is_set()
         self._connected.clear()
-        if was_connected:
+        if was_connected and not self._stopping.is_set():
             _LOGGER.warning("Wiren Board MQTT connection was lost")
             self._notify_connection(False)
 
     def _on_message(self, _client, _userdata, message) -> None:
+        if self._stopping.is_set():
+            return
         payload = message.payload.decode("utf-8", errors="replace")
         control_key = self._control_key_from_topic(message.topic)
         control_device_id = control_key.split("/", 1)[0] if control_key else None
@@ -395,20 +418,20 @@ class WBRuntimeClient:
         if key:
             callbacks = list(self._callbacks.get(key, []))
             for callback in callbacks:
-                self._loop.call_soon_threadsafe(callback, payload)
+                self._schedule_callback(callback, payload)
 
         meta_key = self._control_key_from_topic(message.topic)
         if meta_key and "/meta" in message.topic:
             control = self._parser.controls.get(meta_key)
             if control:
                 for callback in list(self._meta_callbacks.get(meta_key, [])):
-                    self._loop.call_soon_threadsafe(callback, control)
+                    self._schedule_callback(callback, control)
 
         device_id = self._device_id_from_meta_topic(message.topic)
         if device_id:
             meta = self._parser.device_meta.get(device_id, {})
             for callback in list(self._device_meta_callbacks.get(device_id, [])):
-                self._loop.call_soon_threadsafe(callback, meta)
+                self._schedule_callback(callback, meta)
 
         if (
             control_device_id
@@ -419,14 +442,27 @@ class WBRuntimeClient:
             for callback in list(
                 self._device_meta_callbacks.get(control_device_id, [])
             ):
-                self._loop.call_soon_threadsafe(callback, meta)
+                self._schedule_callback(callback, meta)
 
         # Retained messages build the initial inventory after every MQTT
         # subscription. They are not live metadata changes and must never
         # trigger a config-entry reload loop.
         if before != after and not message.retain:
             for callback in list(self._inventory_callbacks):
-                self._loop.call_soon_threadsafe(callback)
+                self._schedule_callback(callback)
+
+    def _schedule_callback(self, callback: Callable, *args: object) -> None:
+        """Queue a Paho callback only while the Home Assistant loop is alive."""
+        if self._stopping.is_set():
+            return
+        try:
+            self._loop.call_soon_threadsafe(callback, *args)
+        except RuntimeError:
+            # The loop can close between the stopping check and this call.
+            # Do not hide unrelated scheduling errors while it is still open.
+            if not self._loop.is_closed():
+                raise
+            self._stopping.set()
 
     def _inventory_signature(self, topic: str) -> tuple | None:
         control_key = self._control_key_from_topic(topic)
@@ -471,7 +507,7 @@ class WBRuntimeClient:
 
     def _notify_connection(self, connected: bool) -> None:
         for callback in list(self._connection_callbacks):
-            self._loop.call_soon_threadsafe(callback, connected)
+            self._schedule_callback(callback, connected)
 
     @staticmethod
     def _remove_callback(callbacks: dict, key: str, callback: Callable) -> None:

@@ -7,7 +7,13 @@ import re
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_PORT,
+    CONF_USERNAME,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -31,6 +37,7 @@ from .const import (
     PLATFORMS,
     SERVICE_SEND_SMS,
 )
+from .device_registry_compat import device_belongs_to_entry, get_device_by_identifier
 from .device_groups import async_apply_device_groups
 from .models import WBControl
 from .wb_mqtt import (
@@ -110,28 +117,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data[CONF_PREFIX],
         hass.config.language,
     )
-    await client.async_start()
 
-    controls = await _async_entry_controls(hass, entry, data)
-    _remove_hidden_control_entries(hass, entry, controls)
-    groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
-    await async_apply_device_groups(hass, controls, groups)
-    runtime = {
-        "client": client,
-        "sms_lock": asyncio.Lock(),
-        "controls": controls,
-        "groups": groups,
-        "hidden_controls": composite_control_keys(groups),
-        "inverted_binary_sensors": set(
-            entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
-        ),
-    }
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    _reconcile_control_devices(hass, entry, controls)
-    _reconcile_device_identity(hass, entry, controls)
-    _watch_selected_inventory(hass, entry, runtime)
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    async def stop_client(_event) -> None:
+        await client.async_stop()
+
+    cancel_stop_listener = None
+    try:
+        # Core shutdown does not necessarily unload config entries before
+        # closing its event loop. Listen before starting the Paho worker too.
+        cancel_stop_listener = hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STOP, stop_client
+        )
+        await client.async_start()
+        controls = await _async_entry_controls(hass, entry, data)
+        _remove_hidden_control_entries(hass, entry, controls)
+        groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))
+        await async_apply_device_groups(hass, controls, groups)
+        runtime = {
+            "client": client,
+            "sms_lock": asyncio.Lock(),
+            "controls": controls,
+            "groups": groups,
+            "hidden_controls": composite_control_keys(groups),
+            "inverted_binary_sensors": set(
+                entry.options.get(CONF_INVERTED_BINARY_SENSORS, [])
+            ),
+        }
+        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        _reconcile_control_devices(hass, entry, controls)
+        _reconcile_device_identity(hass, entry, controls)
+        _watch_selected_inventory(hass, entry, runtime)
+
+        entry.async_on_unload(cancel_stop_listener)
+        entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    except BaseException:
+        if cancel_stop_listener is not None:
+            cancel_stop_listener()
+        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        await client.async_stop()
+        raise
     return True
 
 
@@ -158,7 +183,7 @@ def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> No
         device_entities = er.async_entries_for_device(
             entity_registry, device_id, include_disabled_entities=True
         )
-        if device and entry.entry_id in device.config_entries and not device_entities:
+        if device and device_belongs_to_entry(device, entry.entry_id) and not device_entities:
             device_registry.async_remove_device(device_id)
 
 
@@ -191,7 +216,7 @@ def _remove_hidden_control_entries(
         device_entities = er.async_entries_for_device(
             entity_registry, device_id, include_disabled_entities=True
         )
-        if device and entry.entry_id in device.config_entries and not device_entities:
+        if device and device_belongs_to_entry(device, entry.entry_id) and not device_entities:
             device_registry.async_remove_device(device_id)
 
 
@@ -214,8 +239,8 @@ def _reconcile_control_devices(
         if entity is None:
             continue
         device_identifier = control.ha_device_id or control.device_id
-        expected_device = device_registry.async_get_device(
-            identifiers={(DOMAIN, device_identifier)}
+        expected_device = get_device_by_identifier(
+            device_registry, device_identifier, entry.entry_id
         )
         if expected_device is None:
             expected_device = device_registry.async_get_or_create(
@@ -241,7 +266,7 @@ def _reconcile_control_devices(
         device_entities = er.async_entries_for_device(
             entity_registry, device_id, include_disabled_entities=True
         )
-        if device and entry.entry_id in device.config_entries and not device_entities:
+        if device and device_belongs_to_entry(device, entry.entry_id) and not device_entities:
             device_registry.async_remove_device(device_id)
 
 
@@ -268,7 +293,7 @@ def _reconcile_device_identity(
 
     registry = dr.async_get(hass)
     for identifier, updates in updates_by_identifier.items():
-        device = registry.async_get_device(identifiers={(DOMAIN, identifier)})
+        device = get_device_by_identifier(registry, identifier, entry.entry_id)
         if device is not None:
             registry.async_update_device(device.id, **updates)
 

@@ -4,6 +4,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from .const import DOMAIN
+from .device_registry_compat import get_device_by_identifier
 from .models import WBControl, has_meta_error, localized_title
 from .wb_mqtt import WBRuntimeClient, identity_metadata_key
 
@@ -122,7 +123,9 @@ class WBEntity(Entity):
             return
         registry = dr.async_get(self.hass)
         identifier = self._control.ha_device_id or self._control.device_id
-        device = registry.async_get_device(identifiers={(DOMAIN, identifier)})
+        device = get_device_by_identifier(
+            registry, identifier, self.platform.config_entry.entry_id
+        )
         if device is None:
             return
         info = self._attr_device_info
