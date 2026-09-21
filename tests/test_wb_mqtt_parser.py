@@ -89,6 +89,26 @@ class TopicParserTest(unittest.TestCase):
         self.assertEqual(control.device_meta["hw_version"], "8.5.3")
         self.assertEqual(control.device_meta["sw_version"], "unstable.latest")
 
+    def test_inventory_signature_ignores_live_error_metadata(self) -> None:
+        control = wb_mqtt.WBControl(
+            device_id="wb-test",
+            control_id="temperature",
+            control_name="Temperature",
+            control_type="temperature",
+            readonly=True,
+            units="deg C",
+            meta={"type": "temperature", "error": ""},
+            device_meta={"driver": "wb-modbus", "error": ""},
+        )
+        before = wb_mqtt.control_metadata_signature(control)
+
+        control.meta["error"] = "r"
+        control.device_meta["error"] = "device disconnected"
+        self.assertEqual(before, wb_mqtt.control_metadata_signature(control))
+
+        control.meta["hidden"] = True
+        self.assertNotEqual(before, wb_mqtt.control_metadata_signature(control))
+
 
 if __name__ == "__main__":
     unittest.main()

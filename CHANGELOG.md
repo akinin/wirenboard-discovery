@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.1
+
+- Treat live control- and device-level `meta/error` updates strictly as
+  availability changes, preventing full config-entry reloads and brief outages
+  of all Wiren Board entities when a device reports a transient error.
+
 ## 0.17.0
 
 - Localize device, entity, and enum titles using the Home Assistant language,

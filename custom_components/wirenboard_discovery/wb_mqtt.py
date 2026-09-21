@@ -17,6 +17,8 @@ from .models import WBControl, localized_title, normalize_topic_prefix, parse_bo
 
 _LOGGER = logging.getLogger(__name__)
 
+_TRANSIENT_METADATA_KEYS = frozenset({"error"})
+
 
 ValueCallback = Callable[[Optional[str]], None]
 MetaCallback = Callable[[WBControl], None]
@@ -435,7 +437,9 @@ class WBRuntimeClient:
             return control_metadata_signature(control)
         device_id = self._device_id_from_meta_topic(topic)
         if device_id:
-            return _freeze(self._parser.device_meta.get(device_id, {}))
+            return _metadata_inventory_signature(
+                self._parser.device_meta.get(device_id, {})
+            )
         return None
 
     def _key_from_topic(self, topic: str) -> str | None:
@@ -533,8 +537,19 @@ def control_metadata_signature(control: WBControl) -> tuple:
         control.control_type,
         control.readonly,
         control.units,
-        _freeze(control.meta),
-        _freeze(control.device_meta),
+        _metadata_inventory_signature(control.meta),
+        _metadata_inventory_signature(control.device_meta),
+    )
+
+
+def _metadata_inventory_signature(metadata: dict[str, object]) -> object:
+    """Freeze structural metadata without live availability state."""
+    return _freeze(
+        {
+            key: value
+            for key, value in metadata.items()
+            if str(key).lower() not in _TRANSIENT_METADATA_KEYS
+        }
     )
 
 
