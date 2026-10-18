@@ -1,5 +1,5 @@
 [![GitHub Release](https://img.shields.io/github/v/release/akinin/wirenboard-discovery?style=flat&color=%23A349A4)](https://github.com/akinin/wirenboard-discovery/releases/latest)
-[![Support the project](https://img.shields.io/badge/Support%20the%20project-spasibomir.ru-2ea44f?style=flat)](https://spasibomir.ru/pay/22699)
+[![Support the project](https://img.shields.io/badge/Support%20the%20project-Keepz-2ea44f?style=flat)](https://app.keepz.me/pay?qrType=DEFAULT&receiverType=USER&receiverId=3a23e5d1-9569-425b-97c1-2a9e39fb4bd5&lng=en)
 
 **Language: [Русский (основной)](README.md) | English**
 
