@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.3
+
+- Require `paho-mqtt>=2.1.0` instead of pinning an exact version, allowing
+  Home Assistant to update its shared MQTT dependency and fixing hassfest
+  validation for HACS inclusion.
+
 ## 0.17.2
 
 - Stop scheduling MQTT worker-thread callbacks when Home Assistant is shutting
