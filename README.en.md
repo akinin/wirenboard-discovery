@@ -304,3 +304,11 @@ The integration handles device and channel errors, hidden channels, writable/rea
 [device_templates](https://github.com/akinin/wirenboard-discovery/tree/main/device_templates) contains a compatible custom R8C-963S template with bilingual labels, corrected units, and a floor temperature channel disabled by default for models without that sensor. Installing it is a separate Wiren Board configuration step.
 
 See [CHANGELOG](https://github.com/akinin/wirenboard-discovery/blob/main/CHANGELOG.md) for release history. To report a problem, open an [Issue](https://github.com/akinin/wirenboard-discovery/issues) with your Home Assistant and integration versions, a description, and diagnostics with passwords and private messages removed.
+
+## Support the project
+
+If you find the integration useful, you can [support its development through Keepz](https://app.keepz.me/pay?qrType=DEFAULT&receiverType=USER&receiverId=3a23e5d1-9569-425b-97c1-2a9e39fb4bd5&lng=en). To donate from your phone, scan the QR code.
+
+<a href="https://app.keepz.me/pay?qrType=DEFAULT&amp;receiverType=USER&amp;receiverId=3a23e5d1-9569-425b-97c1-2a9e39fb4bd5&amp;lng=en">
+  <img src="images/en/donate-keepz-qr.png" alt="QR code to support the project through Keepz" width="220" height="220">
+</a>
