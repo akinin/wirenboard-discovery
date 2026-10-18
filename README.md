@@ -304,3 +304,11 @@ devices:
 В [device_templates](https://github.com/akinin/wirenboard-discovery/tree/main/device_templates) есть совместимый пользовательский шаблон R8C-963S с двуязычными подписями, исправленными единицами и отключённым по умолчанию каналом температуры пола для комплектации без датчика. Его установка — отдельная настройка Wiren Board.
 
 История версий — в [CHANGELOG](https://github.com/akinin/wirenboard-discovery/blob/main/CHANGELOG.md). Для сообщения об ошибке используйте [Issues](https://github.com/akinin/wirenboard-discovery/issues), указав версии Home Assistant и интеграции, описание проблемы и диагностические данные без паролей и личных сообщений.
+
+## Поддержать проект
+
+Если интеграция полезна, можно [поддержать её развитие через СпасибоМир](https://spasibomir.ru/pay/22699). Для перевода с телефона отсканируйте QR-код.
+
+<a href="https://spasibomir.ru/pay/22699">
+  <img src="images/donate-spasibomir-qr.png" alt="QR-код для поддержки проекта через СпасибоМир" width="220" height="220">
+</a>
