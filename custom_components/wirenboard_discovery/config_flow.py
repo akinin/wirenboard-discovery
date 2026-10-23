@@ -215,11 +215,13 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         self._pending_group_id: str | None = None
         self._pending_group: dict[str, Any] | None = None
         self._pending_old_group_id: str | None = None
+        self._controls_show_system: bool | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
+                "controls",
                 "add_group",
                 "edit_group",
                 "remove_group",
@@ -351,32 +353,48 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_controls(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-        errors.update(await self._async_load_controls())
-
-        if user_input is not None:
-            show_system = user_input[CONF_SHOW_SYSTEM_DEVICES]
-            visible_keys = set(_visible_controls(self._controls, show_system))
-            selected = set(user_input[CONF_SELECTED_CONTROLS])
-            if not show_system:
-                selected.update(set(self._current_selected_controls()) - visible_keys)
-            return self.async_create_entry(
-                title="",
-                data=self._options_with(
-                    selected_controls=sorted(selected),
-                    show_system_devices=show_system,
-                ),
-            )
-
-        show_system = self._show_system_devices()
+        """Add channels without replacing the current selection or device groups."""
+        errors = await self._async_load_controls()
+        if self._controls_show_system is None:
+            self._controls_show_system = self._show_system_devices()
+        show_system = (
+            user_input[CONF_SHOW_SYSTEM_DEVICES]
+            if user_input is not None
+            else self._controls_show_system
+        )
         visible_controls = _visible_controls(self._controls, show_system)
-        visible_keys = set(visible_controls)
-        selected = [key for key in self._current_selected_controls() if key in visible_keys]
-        options = _select_options(visible_controls)
+        selected = set(self._current_selected_controls())
+        available = {
+            key: control
+            for key, control in visible_controls.items()
+            if key not in selected
+        }
+        requested = set(user_input[CONF_SELECTED_CONTROLS]) if user_input else set()
+        if user_input is not None and not errors:
+            if show_system != self._controls_show_system:
+                # Refresh the choices first when the system-device filter changes.
+                self._controls_show_system = show_system
+            elif requested - set(available) - selected:
+                errors[CONF_SELECTED_CONTROLS] = "invalid_controls"
+            else:
+                selected.update(requested)
+                removed = set(self._current_removed_controls()) - selected
+                return self.async_create_entry(
+                    title="",
+                    data=self._options_with(
+                        selected_controls=sorted(selected),
+                        removed_controls=sorted(removed),
+                        show_system_devices=show_system,
+                    ),
+                )
+
+        options = _select_options(available, self._current_groups())
         schema = vol.Schema(
             {
                 vol.Required(CONF_SHOW_SYSTEM_DEVICES, default=show_system): bool,
-                vol.Required(CONF_SELECTED_CONTROLS, default=selected): selector.SelectSelector(
+                vol.Required(
+                    CONF_SELECTED_CONTROLS, default=sorted(requested & set(available))
+                ): selector.SelectSelector(
                     selector.SelectSelectorConfig(options=options, multiple=True)
                 ),
             }

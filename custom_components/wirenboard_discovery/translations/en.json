@@ -37,6 +37,7 @@
         "title": "Wiren Board devices",
         "description": "Choose an action.",
         "menu_options": {
+          "controls": "Add channels",
           "invert_binary_sensors": "Invert binary sensors",
           "connection": "Connection",
           "add_group": "Add or update group",
@@ -63,11 +64,11 @@
         }
       },
       "controls": {
-        "title": "Wiren Board items",
-        "description": "Select Wiren Board items to add to Home Assistant as entities.",
+        "title": "Add Wiren Board channels",
+        "description": "Select additional channels to add to Home Assistant. Only channels not already selected are listed. Existing entities and groups are preserved; no new group is created. To change the system-device filter, toggle it and submit to refresh the list, then select channels.",
         "data": {
           "show_system_devices": "Show system devices",
-          "selected_controls": "Items"
+          "selected_controls": "Channels to add"
         }
       },
       "connection": {
@@ -173,7 +174,8 @@
       "required": "Fill in this field.",
       "already_exists": "A group with this ID already exists.",
       "invalid_import": "Could not read import JSON.",
-      "no_groups": "No groups have been created yet."
+      "no_groups": "No groups have been created yet.",
+      "invalid_controls": "Some selected channels are no longer available. Reopen Add channels and try again."
     }
   },
   "entity": {

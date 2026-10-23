@@ -9,12 +9,12 @@ This integration connects Wiren Board devices directly to Home Assistant over MQ
 
 > An unofficial community integration. It is not a Wiren Board product and is not supported by Wiren Board.
 
-This guide covers **version 0.17.3**. The screenshots use the English Home Assistant interface. Room names, device names, and entity counts will differ in your installation. The screenshots use example English device and channel names; bilingual device type labels are preserved.
+This guide covers **version 0.17.4**. The screenshots were taken in version 0.17.3 using the English Home Assistant interface; the new **Add channels** menu option is described below. Room names, device names, and entity counts will differ in your installation. The screenshots use example English device and channel names; bilingual device type labels are preserved.
 
 ## Features
 
 - Values and metadata from Wiren Board MQTT topics under `/devices/...`.
-- Channel selection during initial setup; additional channels can be added through groups.
+- Channel selection during initial setup and addition of new channels to existing devices without creating groups.
 - Standard `sensor`, `binary_sensor`, `switch`, `number`, `select`, `button`, `text`, and `datetime` entities.
 - Composite `cover` entities for gates and covers, and `climate` entities for thermostats and air conditioners.
 - Logical devices built from channels belonging to one or more Wiren Board modules.
@@ -72,7 +72,7 @@ Open **Settings → Devices & services → Add integration → Wiren Board Disco
 2. On **Discovered items**, select the channels you want to add to Home Assistant.
 3. Submit your selection and finish the setup wizard.
 
-For an initial check, select a few familiar channels, such as temperature, humidity, and one relay. You can add the rest later through groups. System devices are hidden by default; channels with `hidden: true` MQTT metadata are hidden separately.
+For an initial check, select a few familiar channels, such as temperature, humidity, and one relay. You can add the rest later through **Configure → Add channels**. System devices are hidden by default; channels with `hidden: true` MQTT metadata are hidden separately.
 
 If you see **This controller is already configured**, open the existing integration entry instead of adding the same connection again.
 
@@ -98,6 +98,7 @@ Open the **Wiren Board Discovery** page and click the **Configure** gear icon fo
 
 | Option | Purpose |
 |---|---|
+| Add channels | Add channels of any supported type to WB devices without creating a manual group. Existing entities are preserved. |
 | Add or update group | Create a logical device and include channels, including previously unselected ones. |
 | Edit group | Change an existing group's name, channels, type, and roles. |
 | Remove group | Remove a group and deselect its channels unless other groups use them. |
@@ -114,10 +115,15 @@ Saving options reloads the integration entry. A full Home Assistant restart is u
 
 New MQTT channels **do not create entities automatically**. The integration sees them in its current MQTT inventory, but you must explicitly select them.
 
-There is no separate **Select items** menu option after initial setup. Use either of these options:
+1. Open **Configure → Add channels**.
+2. Under **Channels to add**, find and select the sensors, inputs, meters, buttons, relays, or other supported channels you need. Already selected channels are omitted from this list.
+3. Submit the selection. New entities appear under their Wiren Board devices; existing entities, their identifiers, and group settings are preserved.
 
-- **Add or update group**: create a regular device using the new channels you need.
-- **Edit group**: add new channels to an existing device.
+There is no need to create a group named after the module: channels from the same physical device reuse its existing identity. For example, another WB-MR6C channel appears under the same device as its other channels. Previously created manual groups are not automatically merged with physical devices.
+
+For system channels, enable **Show system devices** and submit to refresh the list. Then select channels and save.
+
+**Add or update group** and **Edit group** are for manual logical devices and composite entities. Automatically created WB devices are not manual groups and do not appear in the group editor.
 
 The **Group items** field supports search. A label in square brackets, such as `[Gate]`, indicates that another group already uses the channel. Moving an existing channel can change the device associated with its entity.
 
@@ -133,6 +139,8 @@ The **Group items** field supports search. A label in square brackets, such as `
 4. Select the **Device** type.
 5. Under **Group items**, select channels from one or more Wiren Board devices.
 6. Optionally set an icon and submit the form.
+
+An existing manual group's ID appears in parentheses under **Edit group**, for example `Living room climate (living_room_sensors)`. To change that group, select it from this list. Automatically created WB devices do not have manual group IDs; use **Add channels** to add their channels.
 
 A regular group brings standalone entities together on one device page. Selecting a temperature channel and a setpoint does not itself create a thermostat: choose **Thermostat** and assign roles for that.
 
@@ -287,7 +295,7 @@ Open **Configure → Diagnostics**. The screen shows discovered device and chann
 | The controller was not discovered automatically | Add it manually. Check MQTT and mDNS connectivity between networks; enter settings manually for authentication or a nonstandard port. |
 | Connection failed | Check the address, port, credentials, and Home Assistant's access to the broker. Enter the MQTT broker address, not the WB web interface URL. |
 | MQTT works, but there are no channels | Check the prefix, retained values and metadata under `/devices/...`, and the MQTT user's access to those topics. |
-| A new channel appears in WB, but has no HA entity | Add it by creating or editing a group. New channels are not selected automatically. |
+| A new channel appears in WB, but has no HA entity | Select it through **Configure → Add channels**. New channels are not selected automatically. |
 | A channel is hidden | Check the system device type and `hidden: true` metadata. Channels hidden by their publisher are excluded from initial selection. |
 | An entity became unavailable | Check the MQTT connection and channel/device `meta/error` values. Availability should recover after the error is resolved. |
 | A binary input shows the opposite state | Configure inversion for that sensor. |

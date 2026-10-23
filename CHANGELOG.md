@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.17.4
+
+- Add an **Add channels** options-menu entry for selecting additional channels
+  of any supported type without creating a logical device group. New channels
+  use the existing Wiren Board device identity.
+- Preserve all previously selected channels, existing groups, inversion settings,
+  and stored metadata when adding channels. Previously removed channels can be
+  selected again without being deleted on the next reload.
+- Refresh the available choices when changing the system-device filter, and
+  prevent discovery errors or unavailable choices from overwriting settings.
+- Update the Russian and English guides and add regression coverage for adding
+  channels to existing devices without duplicate device identities.
+
 ## 0.17.3
 
 - Require `paho-mqtt>=2.1.0` instead of pinning an exact version, allowing
