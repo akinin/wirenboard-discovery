@@ -15,7 +15,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -106,7 +106,6 @@ def _normalize_phone(value: str) -> str:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    _remove_stale_control_entries(hass, entry)
     data = _entry_connection(entry)
     client = WBRuntimeClient(
         hass.loop,
@@ -128,7 +127,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         cancel_stop_listener = hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_STOP, stop_client
         )
-        await client.async_start()
+        try:
+            await client.async_start()
+        except (OSError, WBDiscoveryError) as err:
+            raise ConfigEntryNotReady(
+                f"Cannot connect to Wiren Board MQTT: {err}"
+            ) from err
+
+        _remove_stale_control_entries(hass, entry)
         controls = await _async_entry_controls(hass, entry, data)
         _remove_hidden_control_entries(hass, entry, controls)
         groups = normalize_groups(entry.options.get(CONF_DEVICE_GROUPS, {}))

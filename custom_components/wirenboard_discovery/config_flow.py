@@ -137,8 +137,7 @@ class WirenBoardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="not_wirenboard")
 
         host = _zeroconf_host(discovery_info)
-        unique_host = getattr(discovery_info, "host", None) or host
-        await self.async_set_unique_id(f"{unique_host}:{DEFAULT_PORT}")
+        await self.async_set_unique_id(f"{host}:{DEFAULT_PORT}")
         self._abort_if_unique_id_configured()
 
         self._connection_data = {
@@ -1041,12 +1040,15 @@ def _is_wirenboard_zeroconf(discovery_info: Any) -> bool:
 
 
 def _zeroconf_host(discovery_info: Any) -> str:
+    # Home Assistant already resolved the mDNS announcement to a usable address.
+    address = getattr(discovery_info, "ip_address", None) or getattr(
+        discovery_info, "host", None
+    )
+    if address:
+        return str(address)
     hostname = getattr(discovery_info, "hostname", None)
     if hostname:
         return str(hostname).rstrip(".")
-    host = getattr(discovery_info, "host", None)
-    if host:
-        return str(host)
     return _zeroconf_name(discovery_info) or DEFAULT_HOST
 
 

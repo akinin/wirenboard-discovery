@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.5
+
+- Retry integration setup automatically when the MQTT broker is unreachable
+  or its hostname cannot be resolved during Home Assistant startup.
+- Use the resolved IP address provided by Home Assistant for Zeroconf discovery.
+- Use the native Climate temperature API on newer Home Assistant versions and
+  retain compatibility with older supported versions.
+
 ## 0.17.4
 
 - Add an **Add channels** options-menu entry for selecting additional channels
