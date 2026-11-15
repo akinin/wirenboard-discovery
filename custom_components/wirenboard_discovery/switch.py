@@ -10,6 +10,13 @@ from .entity import WBEntity
 from .models import WBControl
 from .wb_mqtt import WBRuntimeClient
 
+_WB_MSW_DEVICE_TYPES = {"wb-msw", "wb-msw2", "wb-msw-v3", "wb-msw-v4", "wb-msw-lora-v4"}
+_WB_MSW_ICON_KEYS = {
+    "buzzer": "wb_msw_buzzer",
+    "red led": "wb_msw_led",
+    "green led": "wb_msw_led",
+}
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
@@ -34,6 +41,8 @@ def _is_switch(control: WBControl) -> bool:
 class WBSwitch(WBEntity, SwitchEntity):
     def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
+        if control.device_id.lower().partition("_")[0] in _WB_MSW_DEVICE_TYPES:
+            self._attr_translation_key = _WB_MSW_ICON_KEYS.get(control.control_id.lower())
         self._write_only = control.control_type == "wo-switch"
         self._assumed_is_on: bool | None = None
         self._attr_assumed_state = self._write_only

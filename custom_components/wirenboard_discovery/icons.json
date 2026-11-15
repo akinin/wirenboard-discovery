@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "switch": {
+      "wb_msw_buzzer": {
+        "default": "mdi:bell-ring-outline"
+      },
+      "wb_msw_led": {
+        "default": "mdi:led-off",
+        "state": {
+          "on": "mdi:led-on"
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.6
+
+- Give WB-MSW buzzers and red and green LEDs default icons. LED icons follow
+  their switch state, and Home Assistant still uses any user-selected icon.
+
 ## 0.17.5
 
 - Retry integration setup automatically when the MQTT broker is unreachable
