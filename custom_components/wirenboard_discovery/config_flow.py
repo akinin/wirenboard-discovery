@@ -28,6 +28,9 @@ from .composite import (
 from .const import (
     CONF_DEVICE_GROUPS,
     CONF_INVERTED_BINARY_SENSORS,
+    CONF_MOTION_OFF_DELAY,
+    CONF_MOTION_SETTINGS,
+    CONF_MOTION_THRESHOLD,
     CONF_REMOVED_CONTROLS,
     CONF_PREFIX,
     CONF_SELECTED_CONTROLS,
@@ -39,6 +42,12 @@ from .const import (
     DOMAIN,
 )
 from .models import WBControl, has_meta_error, localized_title
+from .motion import (
+    MAX_MOTION_LEVEL,
+    MAX_MOTION_OFF_DELAY,
+    is_msw_max_motion,
+    motion_config,
+)
 from .standards import is_canonical_id
 from .wb_mqtt import WBDiscoveryError, discover_controls, discover_snapshot
 
@@ -211,6 +220,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         self._config_entry = config_entry
         self._controls: dict[str, WBControl] = {}
         self._edit_group_id: str | None = None
+        self._motion_device_id: str | None = None
         self._pending_group_id: str | None = None
         self._pending_group: dict[str, Any] | None = None
         self._pending_old_group_id: str | None = None
@@ -221,6 +231,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             menu_options=[
                 "controls",
+                "motion_device",
                 "add_group",
                 "edit_group",
                 "remove_group",
@@ -231,6 +242,103 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
                 "diagnostics",
                 "connection",
             ],
+        )
+
+    async def async_step_motion_device(self, user_input: dict[str, Any] | None = None):
+        errors = await self._async_load_controls()
+        stored_controls = self._config_entry.options.get(
+            "discovered_controls",
+            self._config_entry.data.get("discovered_controls", {}),
+        )
+        devices = {}
+        for key in self._current_selected_controls():
+            control = self._controls.get(key)
+            if control is None and key in stored_controls:
+                control = control_from_dict(stored_controls[key])
+            if control is not None and is_msw_max_motion(control):
+                devices[control.device_id] = control.device_name or control.device_id
+
+        if not devices:
+            return self.async_show_form(
+                step_id="motion_device",
+                data_schema=vol.Schema({}),
+                errors=errors or {"base": "no_motion_devices"},
+                last_step=True,
+            )
+
+        if user_input is not None:
+            device_id = user_input["device_id"]
+            if device_id in devices:
+                self._motion_device_id = device_id
+                return await self.async_step_motion_settings()
+            errors["device_id"] = "invalid_motion_device"
+
+        return self.async_show_form(
+            step_id="motion_device",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("device_id"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(
+                                    value=device_id, label=f"{name} ({device_id})"
+                                )
+                                for device_id, name in sorted(
+                                    devices.items(), key=lambda item: (item[1], item[0])
+                                )
+                            ],
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_motion_settings(self, user_input: dict[str, Any] | None = None):
+        device_id = self._motion_device_id
+        if device_id is None:
+            return await self.async_step_motion_device()
+
+        all_settings = dict(self._config_entry.options.get(CONF_MOTION_SETTINGS, {}))
+        settings = motion_config(all_settings.get(device_id, {}))
+        errors = {}
+        if user_input is not None:
+            try:
+                all_settings[device_id] = motion_config(user_input)
+            except ValueError:
+                errors["base"] = "invalid_motion_settings"
+            else:
+                return self.async_create_entry(
+                    title="", data=self._options_with(motion_settings=all_settings)
+                )
+
+        return self.async_show_form(
+            step_id="motion_settings",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_MOTION_THRESHOLD, default=settings[CONF_MOTION_THRESHOLD]
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=MAX_MOTION_LEVEL,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_MOTION_OFF_DELAY, default=settings[CONF_MOTION_OFF_DELAY]
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=MAX_MOTION_OFF_DELAY,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="s",
+                        )
+                    ),
+                }
+            ),
+            errors=errors,
+            last_step=True,
         )
 
     async def async_step_remove_entities(
@@ -871,6 +979,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         device_groups: dict[str, dict[str, Any]] | None = None,
         show_system_devices: bool | None = None,
         connection: dict[str, Any] | None = None,
+        motion_settings: dict[str, dict[str, int]] | None = None,
     ) -> dict[str, Any]:
         selected = selected_controls if selected_controls is not None else self._current_selected_controls()
         inverted = (
@@ -903,6 +1012,11 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_REMOVED_CONTROLS: removed,
             "discovered_controls": controls,
             CONF_DEVICE_GROUPS: groups,
+            CONF_MOTION_SETTINGS: (
+                motion_settings
+                if motion_settings is not None
+                else self._config_entry.options.get(CONF_MOTION_SETTINGS, {})
+            ),
             CONF_SHOW_SYSTEM_DEVICES: show_system,
             **self._connection_options(connection),
         }
@@ -948,6 +1062,7 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             "selected_controls": self._current_selected_controls(),
             "inverted_binary_sensors": self._current_inverted_binary_sensors(),
             "device_groups": self._current_groups(),
+            CONF_MOTION_SETTINGS: self._config_entry.options.get(CONF_MOTION_SETTINGS, {}),
             "discovered_controls": self._config_entry.options.get(
                 "discovered_controls",
                 self._config_entry.data.get("discovered_controls", {}),
@@ -965,7 +1080,8 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
         inverted = [str(key) for key in payload.get("inverted_binary_sensors", [])]
         groups = payload.get("device_groups") or {}
         discovered = payload.get("discovered_controls") or {}
-        if not isinstance(groups, dict) or not isinstance(discovered, dict):
+        motion_settings = payload.get(CONF_MOTION_SETTINGS, {})
+        if not all(isinstance(value, dict) for value in (groups, discovered, motion_settings)):
             raise ValueError("invalid import payload")
 
         return {
@@ -974,6 +1090,10 @@ class WirenBoardOptionsFlow(config_entries.OptionsFlow):
             CONF_REMOVED_CONTROLS: [],
             "discovered_controls": discovered,
             CONF_DEVICE_GROUPS: groups,
+            CONF_MOTION_SETTINGS: {
+                device_id: motion_config(settings)
+                for device_id, settings in motion_settings.items()
+            },
             CONF_SHOW_SYSTEM_DEVICES: bool(payload.get("show_system_devices", DEFAULT_SHOW_SYSTEM_DEVICES)),
             CONF_HOST: str(connection.get(CONF_HOST, self._current_connection()[CONF_HOST])),
             CONF_PORT: int(connection.get(CONF_PORT, self._current_connection()[CONF_PORT])),

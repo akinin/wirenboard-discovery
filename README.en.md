@@ -99,6 +99,7 @@ Open the **Wiren Board Discovery** page and click the **Configure** gear icon fo
 | Option | Purpose |
 |---|---|
 | Add channels | Add channels of any supported type to WB devices without creating a manual group. Existing entities are preserved. |
+| WB-MSW motion | Configure the motion threshold and off delay independently for each device. |
 | Add or update group | Create a logical device and include channels, including previously unselected ones. |
 | Edit group | Change an existing group's name, channels, type, and roles. |
 | Remove group | Remove a group and deselect its channels unless other groups use them. |
@@ -128,6 +129,12 @@ For system channels, enable **Show system devices** and submit to refresh the li
 The **Group items** field supports search. A label in square brackets, such as `[Gate]`, indicates that another group already uses the channel. Moving an existing channel can change the device associated with its entity.
 
 ![Searching for channels and identifying existing group membership](images/en/group-controls.png)
+
+## WB-MSW motion binary sensor
+
+The integration creates a `motion` binary sensor for each selected **Max Motion** channel and keeps the numeric sensor. By default, motion turns on at **100** or higher. It turns off after the reading stays below the threshold for **5 seconds**. When the reading reaches the threshold again, the pending turn-off is cancelled.
+
+To tune a specific device, open **Configure → WB-MSW motion**, select the device, and set its threshold and off delay in seconds. A delay of **0** turns motion off as soon as the reading drops below the threshold.
 
 ## Logical devices and composite entities
 

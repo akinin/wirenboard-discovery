@@ -123,6 +123,12 @@ class AddChannelsTests(IsolatedAsyncioTestCase):
         result = await self.submit()
         self.assertEqual(result["data"]["selected_controls"], [self.old.key])
 
+    async def test_adding_channels_preserves_motion_settings(self):
+        settings = {"wb-msw-v4_42": {"threshold": 70, "off_delay": 10}}
+        self.entry.options["motion_settings"] = settings
+        result = await self.submit([self.new.key])
+        self.assertEqual(result["data"]["motion_settings"], settings)
+
     async def test_previous_selection_in_payload_is_harmless(self):
         result = await self.submit([self.old.key, self.new.key])
         self.assertEqual(result["data"]["selected_controls"], sorted([self.old.key, self.new.key]))

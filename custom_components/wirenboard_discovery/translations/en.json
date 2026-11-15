@@ -38,6 +38,7 @@
         "description": "Choose an action.",
         "menu_options": {
           "controls": "Add channels",
+          "motion_device": "WB-MSW motion",
           "invert_binary_sensors": "Invert binary sensors",
           "connection": "Connection",
           "add_group": "Add or update group",
@@ -47,6 +48,21 @@
           "export_config": "Export configuration",
           "import_config": "Import configuration",
           "diagnostics": "Diagnostics"
+        }
+      },
+      "motion_device": {
+        "title": "WB-MSW motion",
+        "description": "Choose a device with an added Max Motion channel.",
+        "data": {
+          "device_id": "Device"
+        }
+      },
+      "motion_settings": {
+        "title": "WB-MSW motion settings",
+        "description": "Motion turns on when Max Motion reaches the threshold. The off delay starts when the reading drops below the threshold.",
+        "data": {
+          "threshold": "Motion threshold",
+          "off_delay": "Off delay"
         }
       },
       "invert_binary_sensors": {
@@ -175,6 +191,9 @@
       "already_exists": "A group with this ID already exists.",
       "invalid_import": "Could not read import JSON.",
       "no_groups": "No groups have been created yet.",
+      "no_motion_devices": "Add a WB-MSW Max Motion channel first.",
+      "invalid_motion_device": "This device no longer has a selected Max Motion channel.",
+      "invalid_motion_settings": "Enter a whole-number threshold and off delay within the allowed ranges.",
       "invalid_controls": "Some selected channels are no longer available. Reopen Add channels and try again."
     }
   },

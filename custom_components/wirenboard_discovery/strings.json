@@ -38,6 +38,7 @@
         "description": "Выберите действие.",
         "menu_options": {
           "controls": "Добавить каналы",
+          "motion_device": "Движение WB-MSW",
           "invert_binary_sensors": "Инвертировать бинарные сенсоры",
           "connection": "Подключение",
           "add_group": "Добавить или обновить группу",
@@ -47,6 +48,21 @@
           "export_config": "Экспорт конфигурации",
           "import_config": "Импорт конфигурации",
           "diagnostics": "Диагностика"
+        }
+      },
+      "motion_device": {
+        "title": "Движение WB-MSW",
+        "description": "Выберите устройство с добавленным каналом Max Motion.",
+        "data": {
+          "device_id": "Устройство"
+        }
+      },
+      "motion_settings": {
+        "title": "Настройки движения WB-MSW",
+        "description": "Движение включается, когда Max Motion достигает порога. Задержка выключения начинается, когда значение опускается ниже порога.",
+        "data": {
+          "threshold": "Порог движения",
+          "off_delay": "Задержка выключения"
         }
       },
       "invert_binary_sensors": {
@@ -175,6 +191,9 @@
       "already_exists": "Группа с таким ID уже существует.",
       "invalid_import": "Не удалось прочитать JSON импорта.",
       "no_groups": "Группы ещё не созданы.",
+      "no_motion_devices": "Сначала добавьте канал Max Motion устройства WB-MSW.",
+      "invalid_motion_device": "У этого устройства больше нет выбранного канала Max Motion.",
+      "invalid_motion_settings": "Введите целый порог и задержку в пределах допустимых значений.",
       "invalid_controls": "Некоторые выбранные каналы больше недоступны. Откройте «Добавить каналы» заново и повторите выбор."
     }
   },

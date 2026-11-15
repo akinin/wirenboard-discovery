@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0
+
+- Create a motion binary sensor alongside each selected WB-MSW Max Motion
+  channel. The default threshold is 100, with a 5-second off delay.
+- Configure the threshold and delay independently for each WB-MSW in the
+  options menu. These settings are included in configuration export and import.
+
 ## 0.17.6
 
 - Give WB-MSW buzzers and red and green LEDs default icons. LED icons follow

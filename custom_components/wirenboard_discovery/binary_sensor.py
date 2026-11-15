@@ -1,14 +1,25 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import datetime
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 
-from .const import DOMAIN
+from .const import CONF_MOTION_OFF_DELAY, CONF_MOTION_SETTINGS, CONF_MOTION_THRESHOLD, DOMAIN
 from .entity import WBEntity
 from .models import WBControl
+from .motion import (
+    DEFAULT_MOTION_OFF_DELAY,
+    DEFAULT_MOTION_THRESHOLD,
+    is_msw_max_motion,
+    motion_level,
+    motion_unique_id,
+)
 from .sms import SMS_FIELDS, SmsAttemptTracker
 from .sms_entity import WBSmsEntity
 from .standards import canonical_binary_device_class
@@ -26,6 +37,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for control in controls.values()
         if not control.is_hidden and control.key not in hidden and _is_binary_sensor(control)
     ]
+    motion_settings = entry.options.get(CONF_MOTION_SETTINGS, {})
+    entities.extend(
+        WBMotionSensor(client, control, motion_settings.get(control.device_id, {}))
+        for control in controls.values()
+        if control.key not in hidden and is_msw_max_motion(control)
+    )
     entities.append(WBSmsScriptAvailable(entry, client))
     async_add_entities(entities)
 
@@ -50,6 +67,69 @@ class WBBinarySensor(WBEntity, BinarySensorEntity):
             return None
         is_on = str(self._value).strip().lower() in {"1", "true", "on"}
         return not is_on if self._inverted else is_on
+
+
+class WBMotionSensor(WBEntity, BinarySensorEntity):
+    """Derive motion from the WB-MSW peak reading."""
+
+    _attr_device_class = BinarySensorDeviceClass.MOTION
+    _attr_is_on = None
+
+    def __init__(
+        self, client: WBRuntimeClient, control: WBControl, settings: dict[str, int]
+    ) -> None:
+        self._threshold = settings.get(CONF_MOTION_THRESHOLD, DEFAULT_MOTION_THRESHOLD)
+        self._off_delay = settings.get(CONF_MOTION_OFF_DELAY, DEFAULT_MOTION_OFF_DELAY)
+        self._level: float | None = None
+        self._cancel_off: Callable[[], None] | None = None
+        super().__init__(client, control)
+        self._attr_unique_id = motion_unique_id(control.unique_id)
+        self.entity_id = f"binary_sensor.{control.unique_id.removeprefix('wb_')}"
+
+    def _control_name(self, control: WBControl) -> str:
+        language = (self._client.language or "").replace("_", "-").split("-", 1)[0]
+        return "Движение" if language == "ru" else "Motion"
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(self._cancel_delayed_off)
+        await super().async_added_to_hass()
+
+    def _handle_value(self, value: str | None) -> None:
+        previous = (self.available, self.is_on)
+        self._level = motion_level(value)
+        self._update_available()
+        if previous != (self.available, self.is_on):
+            self.async_write_ha_state()
+
+    def _handle_connection(self, connected: bool) -> None:
+        if not connected:
+            self._level = None
+        super()._handle_connection(connected)
+
+    def _update_available(self) -> None:
+        super()._update_available()
+        if not self._attr_available or self._level is None:
+            self._attr_available = False
+            self._attr_is_on = None
+            self._cancel_delayed_off()
+        elif self._level >= self._threshold:
+            self._attr_is_on = True
+            self._cancel_delayed_off()
+        elif not self._attr_is_on or not self._off_delay:
+            self._attr_is_on = False
+        elif self._cancel_off is None:
+            self._cancel_off = async_call_later(self.hass, self._off_delay, self._finish_off)
+
+    def _cancel_delayed_off(self) -> None:
+        if self._cancel_off is not None:
+            self._cancel_off()
+            self._cancel_off = None
+
+    @callback
+    def _finish_off(self, _now: datetime) -> None:
+        self._cancel_off = None
+        self._attr_is_on = False
+        self.async_write_ha_state()
 
 
 class WBSmsScriptAvailable(WBSmsEntity, BinarySensorEntity):

@@ -8,9 +8,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .entity import WBEntity
 from .models import WBControl
+from .motion import is_wb_msw
 from .wb_mqtt import WBRuntimeClient
 
-_WB_MSW_DEVICE_TYPES = {"wb-msw", "wb-msw2", "wb-msw-v3", "wb-msw-v4", "wb-msw-lora-v4"}
 _WB_MSW_ICON_KEYS = {
     "buzzer": "wb_msw_buzzer",
     "red led": "wb_msw_led",
@@ -41,7 +41,7 @@ def _is_switch(control: WBControl) -> bool:
 class WBSwitch(WBEntity, SwitchEntity):
     def __init__(self, client: WBRuntimeClient, control: WBControl) -> None:
         super().__init__(client, control)
-        if control.device_id.lower().partition("_")[0] in _WB_MSW_DEVICE_TYPES:
+        if is_wb_msw(control.device_id):
             self._attr_translation_key = _WB_MSW_ICON_KEYS.get(control.control_id.lower())
         self._write_only = control.control_type == "wo-switch"
         self._assumed_is_on: bool | None = None

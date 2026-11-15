@@ -40,6 +40,7 @@ from .const import (
 from .device_registry_compat import device_belongs_to_entry, get_device_by_identifier
 from .device_groups import async_apply_device_groups
 from .models import WBControl
+from .motion import motion_unique_id
 from .wb_mqtt import (
     WBDiscoveryError,
     WBRuntimeClient,
@@ -174,6 +175,7 @@ def _remove_stale_control_entries(hass: HomeAssistant, entry: ConfigEntry) -> No
         re.sub(r"[^a-z0-9_]+", "_", f"wb_{key}".lower()).strip("_")
         for key in removed
     }
+    removed_unique_ids.update(motion_unique_id(uid) for uid in tuple(removed_unique_ids))
     affected_devices: set[str] = set()
     for entity in list(er.async_entries_for_config_entry(entity_registry, entry.entry_id)):
         if entity.unique_id in removed_unique_ids:
@@ -202,6 +204,7 @@ def _remove_hidden_control_entries(
     hidden_unique_ids = {
         control.unique_id for control in controls.values() if control.is_hidden
     }
+    hidden_unique_ids.update(motion_unique_id(uid) for uid in tuple(hidden_unique_ids))
     if not hidden_unique_ids:
         return
 
