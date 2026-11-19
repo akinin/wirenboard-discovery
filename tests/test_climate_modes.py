@@ -58,6 +58,32 @@ class ClimateModesTest(unittest.TestCase):
             climate_modes.enum_key_for_hvac_mode("heat", R8C_MODES), "2"
         )
 
+    def test_r8c_russian_enum_exposes_heating(self) -> None:
+        modes = {
+            "0": "Охлаждение",
+            "1": "Вентиляция",
+            "2": "Отопление",
+            "3": "Тёплый пол",
+            "4": "Отопление и тёплый пол",
+        }
+        self.assertEqual(
+            climate_modes.available_hvac_modes("thermostat", modes),
+            ["off", "heat", "cool", "fan_only"],
+        )
+        for key in ("2", "3", "4"):
+            with self.subTest(key=key):
+                self.assertEqual(
+                    climate_modes.resolve_hvac_mode(key, modes, default="off"),
+                    "heat",
+                )
+        self.assertEqual(climate_modes.enum_key_for_hvac_mode("heat", modes), "2")
+
+    def test_russian_floor_heating_without_yo(self) -> None:
+        self.assertEqual(
+            climate_modes.resolve_hvac_mode("3", {"3": "Теплый пол"}, default="off"),
+            "heat",
+        )
+
     def test_exact_mode_control_is_preferred(self) -> None:
         self.assertTrue(climate_modes.is_primary_mode_control("Mode", None))
         self.assertTrue(climate_modes.is_primary_mode_control("status", "Режим"))

@@ -5,7 +5,16 @@ from collections.abc import Mapping
 
 _MODE_ALIASES = {
     "cool": ("cool", "cooling", "холод", "охлажд"),
-    "heat": ("heat", "heating", "тепло", "нагрев", "обогрев"),
+    "heat": (
+        "heat",
+        "heating",
+        "тепло",
+        "нагрев",
+        "обогрев",
+        "отопл",
+        "тёплый пол",
+        "теплый пол",
+    ),
     "dry": ("dry", "осуш"),
     "fan_only": ("fan", "ventilation", "вентил"),
 }
