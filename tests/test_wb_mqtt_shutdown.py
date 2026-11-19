@@ -80,6 +80,7 @@ def make_runtime(loop) -> tuple[wb_mqtt.WBRuntimeClient, FakeClient]:
     runtime._loop = loop
     runtime._prefix = "/"
     runtime._parser = wb_mqtt.WBTopicParser("/")
+    runtime._reported_controls = set()
     runtime._callbacks = {}
     runtime._meta_callbacks = {}
     runtime._device_meta_callbacks = {}
@@ -159,6 +160,48 @@ class ShutdownTest(unittest.TestCase):
 
         self.assertIn("connection was lost", logs.output[0])
         self.assertEqual(loop.calls, [(callback, (False,))])
+
+    def test_reconnected_channel_waits_for_a_new_report(self) -> None:
+        loop = RecordingLoop()
+        runtime, client = make_runtime(loop)
+        key = "test/temperature"
+        topic = "/devices/test/controls/temperature"
+
+        def message(path: str, payload: bytes, retain: bool = False) -> None:
+            runtime._on_message(
+                client,
+                None,
+                types.SimpleNamespace(topic=path, payload=payload, retain=retain),
+            )
+
+        runtime._connected.set()
+        message(topic, b"21")
+        self.assertTrue(runtime.control_available(key))
+        message(f"{topic}/meta/error", b"r")
+        message("/devices/test/meta/error", b"r")
+        self.assertFalse(runtime.control_available(key))
+
+        with patch.object(wb_mqtt._LOGGER, "warning"):
+            runtime._on_disconnect(client, None, None, None, None)
+        runtime._connected.set()
+        self.assertFalse(runtime.control_available(key))
+        message(f"{topic}/on", b"22")
+        message(f"{topic}/meta/error", b"")
+        self.assertFalse(runtime.control_reported(key))
+
+        def inventory_changed(retained: bool) -> None:
+            pass
+
+        runtime.subscribe_inventory(inventory_changed)
+        message(topic, b"23", retain=True)
+        self.assertTrue(runtime.control_available(key))
+        self.assertEqual(runtime.controls[key].value, "23")
+        self.assertIn((inventory_changed, (True,)), loop.calls)
+
+        message("/devices/test/meta/error", b"r", retain=True)
+        self.assertFalse(runtime.control_available(key))
+        message("/devices/test/meta/error", b"")
+        self.assertTrue(runtime.control_available(key))
 
     def test_concurrent_stop_is_idempotent(self) -> None:
         async def stop_twice() -> list[str]:
