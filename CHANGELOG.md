@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.2
+
+- Recognize the Russian labels for heating and floor heating on the R8C-963S
+  thermostat so Home Assistant exposes the correct heating mode to HomeKit.
+
 ## 0.18.1
 
 - Preserve selected channels when startup discovery returns only part of the
