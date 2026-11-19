@@ -4,8 +4,11 @@ on:
   release:
     types:
       - published
-      - edited
   workflow_dispatch:
+
+concurrency:
+  group: release-zip-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
