@@ -13,7 +13,13 @@ from typing import Optional
 from paho.mqtt import client as mqtt
 
 from .const import DISCOVERY_SECONDS
-from .models import WBControl, localized_title, normalize_topic_prefix, parse_bool
+from .models import (
+    WBControl,
+    has_meta_error,
+    localized_title,
+    normalize_topic_prefix,
+    parse_bool,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +30,7 @@ ValueCallback = Callable[[Optional[str]], None]
 MetaCallback = Callable[[WBControl], None]
 DeviceMetaCallback = Callable[[dict[str, object]], None]
 ConnectionCallback = Callable[[bool], None]
-InventoryCallback = Callable[[], None]
+InventoryCallback = Callable[[bool], None]
 UnsubscribeCallback = Callable[[], None]
 
 
@@ -257,6 +263,7 @@ class WBRuntimeClient:
         self._prefix = normalize_topic_prefix(prefix)
         self.language = language
         self._parser = WBTopicParser(prefix)
+        self._reported_controls: set[str] = set()
         self._callbacks: dict[str, list[ValueCallback]] = {}
         self._meta_callbacks: dict[str, list[MetaCallback]] = {}
         self._device_meta_callbacks: dict[str, list[DeviceMetaCallback]] = {}
@@ -280,6 +287,20 @@ class WBRuntimeClient:
     @property
     def connected(self) -> bool:
         return self._connected.is_set()
+
+    def control_reported(self, key: str) -> bool:
+        """Return whether the publisher has reported this channel in this session."""
+        return key in self._reported_controls
+
+    def control_available(self, key: str) -> bool:
+        if not self.connected or not self.control_reported(key):
+            return False
+        control = self._parser.controls[key]
+        device_meta = self._parser.device_meta.get(control.device_id, {})
+        return not (
+            has_meta_error(control.meta.get("error"))
+            or has_meta_error(device_meta.get("error"))
+        )
 
     async def async_start(self) -> None:
         async with self._stop_lock:
@@ -397,6 +418,14 @@ class WBRuntimeClient:
         was_connected = self._connected.is_set()
         self._connected.clear()
         if was_connected and not self._stopping.is_set():
+            self._reported_controls.clear()
+            # A restarted broker may have lost retained errors. A new
+            # subscription will replay any errors the broker still knows about.
+            for control in self._parser.controls.values():
+                control.meta.pop("error", None)
+                control.device_meta.pop("error", None)
+            for meta in self._parser.device_meta.values():
+                meta.pop("error", None)
             _LOGGER.warning("Wiren Board MQTT connection was lost")
             self._notify_connection(False)
 
@@ -415,16 +444,23 @@ class WBRuntimeClient:
         self._parser.parse_message(message.topic, payload)
         after = self._inventory_signature(message.topic)
         key = self._key_from_topic(message.topic)
+        first_report = (
+            control_key is not None
+            and control_key not in self._reported_controls
+            and bool(payload)
+            and (key is not None or message.topic.endswith(("/meta", "/meta/type")))
+        )
+        if first_report:
+            self._reported_controls.add(control_key)
         if key:
             callbacks = list(self._callbacks.get(key, []))
             for callback in callbacks:
                 self._schedule_callback(callback, payload)
 
-        meta_key = self._control_key_from_topic(message.topic)
-        if meta_key and "/meta" in message.topic:
-            control = self._parser.controls.get(meta_key)
+        if control_key and (first_report or "/meta" in message.topic):
+            control = self._parser.controls.get(control_key)
             if control:
-                for callback in list(self._meta_callbacks.get(meta_key, [])):
+                for callback in list(self._meta_callbacks.get(control_key, [])):
                     self._schedule_callback(callback, control)
 
         device_id = self._device_id_from_meta_topic(message.topic)
@@ -444,12 +480,9 @@ class WBRuntimeClient:
             ):
                 self._schedule_callback(callback, meta)
 
-        # Retained messages build the initial inventory after every MQTT
-        # subscription. They are not live metadata changes and must never
-        # trigger a config-entry reload loop.
-        if before != after and not message.retain:
+        if before != after or first_report:
             for callback in list(self._inventory_callbacks):
-                self._schedule_callback(callback)
+                self._schedule_callback(callback, message.retain)
 
     def _schedule_callback(self, callback: Callable, *args: object) -> None:
         """Queue a Paho callback only while the Home Assistant loop is alive."""

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.1
+
+- Preserve selected channels when startup discovery returns only part of the
+  MQTT inventory, including the stored entity type if only a value is received.
+- Restore entities automatically when their channels report again after an MQTT
+  reconnect. Errors from the previous MQTT session no longer block recovery.
+- Detect returning channels without saved metadata during the startup grace
+  period.
+
 ## 0.18.0
 
 - Create a motion binary sensor alongside each selected WB-MSW Max Motion

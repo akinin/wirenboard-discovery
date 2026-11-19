@@ -329,6 +329,7 @@ def _watch_selected_inventory(
             CONF_SELECTED_CONTROLS, entry.data.get(CONF_SELECTED_CONTROLS, [])
         )
     )
+    missing = selected - runtime["controls"].keys()
     runtime["inventory_signature"] = _selected_inventory_signature(client, selected)
     runtime["inventory_reload_cancel"] = None
     runtime["inventory_armed"] = False
@@ -338,12 +339,16 @@ def _watch_selected_inventory(
         if entry.entry_id in hass.data.get(DOMAIN, {}):
             await hass.config_entries.async_reload(entry.entry_id)
 
-    def inventory_changed() -> None:
-        if not runtime["inventory_armed"]:
+    def inventory_changed(retained: bool) -> None:
+        returned = {key for key in missing if client.control_reported(key)}
+        # Retained messages may supply a missing channel, but their normal
+        # replay after every subscription must not trigger an entry reload.
+        if not returned and (retained or not runtime["inventory_armed"]):
             return
         signature = _selected_inventory_signature(client, selected)
-        if signature == runtime["inventory_signature"]:
+        if not returned and signature == runtime["inventory_signature"]:
             return
+        missing.difference_update(returned)
         runtime["inventory_signature"] = signature
         cancel = runtime.get("inventory_reload_cancel")
         if cancel:
@@ -368,6 +373,7 @@ def _watch_selected_inventory(
     entry.async_on_unload(client.subscribe_inventory(inventory_changed))
     entry.async_on_unload(async_call_later(hass, 120.0, arm_inventory))
     entry.async_on_unload(cleanup)
+    inventory_changed(retained=True)
 
 
 def _selected_inventory_signature(
@@ -397,7 +403,7 @@ def _entry_controls(entry: ConfigEntry) -> dict[str, WBControl]:
 async def _async_entry_controls(
     hass: HomeAssistant, entry: ConfigEntry, connection: dict
 ) -> dict[str, WBControl]:
-    """Refresh retained metadata on startup, falling back to stored discovery."""
+    """Refresh discovery without dropping selected controls during a partial scan."""
     stored = _entry_controls(entry)
     selected = set(
         entry.options.get(
@@ -423,11 +429,14 @@ async def _async_entry_controls(
     if not discovered:
         _LOGGER.warning("Wiren Board metadata refresh returned no controls")
         return stored
-    refreshed: dict[str, WBControl] = {}
+    refreshed = stored.copy()
     for key, control in discovered.items():
         if key not in selected:
             continue
         previous = stored.get(key)
+        if previous and previous.control_type and not control.control_type:
+            # A value can arrive before the type needed to create its entity.
+            control = replace(previous, value=control.value)
         if (
             (control.value is None or not str(control.value).strip())
             and previous

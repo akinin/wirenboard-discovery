@@ -5,7 +5,7 @@ from homeassistant.helpers.entity import DeviceInfo, Entity
 
 from .const import DOMAIN
 from .device_registry_compat import get_device_by_identifier
-from .models import WBControl, has_meta_error, localized_title
+from .models import WBControl, localized_title
 from .wb_mqtt import WBRuntimeClient, identity_metadata_key
 
 
@@ -112,9 +112,7 @@ class WBEntity(Entity):
 
     def _update_available(self) -> None:
         self._attr_available = (
-            self._connected
-            and not has_meta_error(self._control.meta.get("error"))
-            and not has_meta_error(self._device_meta.get("error"))
+            self._connected and self._client.control_available(self._control.key)
         )
 
     def _sync_device_registry_info(self) -> None:
